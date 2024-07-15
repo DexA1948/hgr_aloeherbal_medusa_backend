@@ -19,7 +19,7 @@ switch (process.env.NODE_ENV) {
 
 try {
   dotenv.config({ path: process.cwd() + "/" + ENV_FILE_NAME });
-} catch (e) {}
+} catch (e) { }
 
 // CORS when consuming Medusa from admin
 const ADMIN_CORS =
@@ -76,6 +76,12 @@ const projectConfig = {
   store_cors: STORE_CORS,
   database_url: DATABASE_URL,
   admin_cors: ADMIN_CORS,
+  database_extra: process.env.NODE_ENV !== "development" ?
+    {
+      ssl: {
+        rejectUnauthorized: false,
+      },
+    } : {},
   // Uncomment the following lines to enable REDIS
   // redis_url: REDIS_URL
 };
