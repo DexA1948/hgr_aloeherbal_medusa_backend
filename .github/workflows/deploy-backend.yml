@@ -1,0 +1,48 @@
+name: Deploy Backend
+
+
+on:
+  push:
+    branches:
+      - master
+
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GH_TOKEN }}
+
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.AHDEPLOY }}
+
+
+    - name: Add known hosts
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+
+    - name: Deploy to Server
+      run: |
+        ssh root@206.189.159.93 << 'EOF'
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          cd /var/www/medusa/aloeherbal-medusa-backend
+          git config --global credential.helper store
+          echo "https://${{ secrets.GH_TOKEN }}:@github.com" > ~/.git-credentials
+          git pull origin master
+          npm install
+          npm run build
+          pm2 stop backend
+          pm2 flush backend
+          pm2 start backend
+        EOF
