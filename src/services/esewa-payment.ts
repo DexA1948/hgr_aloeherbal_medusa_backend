@@ -14,29 +14,41 @@ import Medusa from "@medusajs/medusa-js"
 
 require('dotenv').config();
 
+const shouldLog = process.env.ESEWA_LOGGING_TRUE === 'true';
+
 class Client {
     public generateSignature(data: string): string {
+        shouldLog && console.log(`generateSignature method has been called.\n`);
+        shouldLog && console.log(`-> Inside generateSignature method we are getting data to create the signature as: \n`);
+        shouldLog && console.log(data);
         const hmac = crypto.createHmac('sha256', process.env.ESEWA_API_KEY);
         hmac.update(data);
-        return hmac.digest('base64');
+        const signature = hmac.digest('base64');
+        shouldLog && console.log(`-> Inside generateSignature method we are returning the signature as: ${signature} \n`);
+        return signature;
     }
 
-    private generateTransactionUUID(length) {
-        let result = '';
-        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        const charactersLength = characters.length;
-        for (let i = 0; i < length; i++) {
-            result += characters.charAt(Math.floor(Math.random() * charactersLength));
-        }
-        return 'dexa1948' + result;
-    }
+    // private generateTransactionUUID(length) {
+    //     shouldLog && console.log(`generateTransactionUUID method has been called. \n`);
+    //     let result = '';
+    //     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    //     const charactersLength = characters.length;
+    //     for (let i = 0; i < length; i++) {
+    //         result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    //     }
+    //     shouldLog && console.log(`-> Inside generateTransactionUUID method we are returning new UUID as: dexa1948${result} \n`);
+    //     return 'dexa1948' + result;
+    // }
 
-    public initiate(): string {
-        return this.generateTransactionUUID(10);
-    }
+    // public getNewTranscationUUID(): string {
+    //     shouldLog && console.log(`getNewTranscationUUID method has been called. \n`);
+    //     const newTranscationUUID = this.generateTransactionUUID(12);
+    //     shouldLog && console.log(`-> Inside getNewTranscationUUID method we are returning new UUID as: ${newTranscationUUID} \n`);
+    //     return newTranscationUUID;
+    // }
 
     async checkPaymentStatus(transaction_uuid, total_amount) {
-        console.log("Inside check payment status");
+        shouldLog && console.log(`checkPaymentStatus method has been called for transaction_uuid: ${transaction_uuid}\n`);
 
         const sanitizedTotalAmount = total_amount.toString().replace(/,/g, '');
 
@@ -49,33 +61,42 @@ class Client {
         const url = `${process.env.ESEWA_BASE_URL}/api/epay/transaction/status`;
         const fullUrl = `${url}?${new URLSearchParams(params).toString()}`;
 
-        console.log("Constructed URL:", fullUrl);
+        shouldLog && console.log(`-> Inside checkPaymentStatus method, transaction status for eSewa is checked at URL: ${fullUrl} \n`);
 
         try {
             const response = await axios.get(url, { params });
-            console.log("Check Payment Status With Esewa:\n", response.data);
+            shouldLog && console.log(`-> Inside checkPaymentStatus method, we get response from eSewa as: \n`);
+            shouldLog && console.log(response.data)
             return response.data;
         } catch (error) {
-            console.error("Error checking payment status with Esewa:", error.message);
+            shouldLog && console.log(`-> Inside checkPaymentStatus method, we encounter error while getting response from eSewa as: \n`);
+            console.error(error.message);
             if (error.response) {
-                console.error("Response data:", error.response.data);
-                console.error("Response status:", error.response.status);
-                console.error("Response headers:", error.response.headers);
+                console.error(`-> Inside checkPaymentStatus method, Here is more details about the error ecountered: \n`);
+                console.error(`-> Inside checkPaymentStatus method, error.response.data is: `, error.response.data);
+                console.error(`-> Inside checkPaymentStatus method, error.response.status is: `, error.response.status);
+                console.error(`-> Inside checkPaymentStatus method, error.response.headers is: `, error.response.headers);
             } else if (error.request) {
-                console.error("No response received:", error.request);
+                console.error(`-> Inside checkPaymentStatus method we haven't received any response, error.request is: \n`, error.request);
             } else {
-                console.error("Error message:", error.message);
+                console.error(`-> Inside checkPaymentStatus method, error.message is: `, error.message);
             }
             throw error;
         }
     }
 
     decodeBase64Response(encodedData: string): any {
+        shouldLog && console.log(`decodeBase64Response method has been called for encodedData: ${encodedData}\n`);
         const decodedData = Buffer.from(encodedData, 'base64').toString('utf-8');
+        shouldLog && console.log(`-> Inside decodeBase64Response method we are getting decoded data before calling JSON.parse as: ${decodedData} \n`);
         return JSON.parse(decodedData);
     }
 
     verifySignature(data: any): boolean {
+        shouldLog && console.log(`verifySignature method has been called. \n`);
+        shouldLog && console.log(`-> Inside verifySignature method we are getting data to verify the signature as: \n`);
+        shouldLog && console.log(data);
+        
         const { signature, ...fields } = data;
         const fieldNames = fields.signed_field_names.split(",");
 
@@ -84,10 +105,11 @@ class Client {
         const generatedSignature = this.generateSignature(dataToSign);
 
         // Logging for debugging
-        console.log("Data to Sign:", dataToSign);
-        console.log("Generated Signature:", generatedSignature);
-        console.log("Provided Signature:", signature);
-        console.log("Signature Match:", generatedSignature === signature);
+        shouldLog && console.log(`-> Inside verifySignature, More logs for debugging: \n`);
+        shouldLog && console.log(`-> Inside verifySignature, we have created signing data 'dataToSign' variable as: ${dataToSign}\n`);
+        shouldLog && console.log(`-> Inside verifySignature, we have received signature 'generatedSignature' variable as: ${generatedSignature}\n`);
+        shouldLog && console.log(`-> Inside verifySignature, the signature we receieved from eSewa is: ${signature}\n`);
+        shouldLog && console.log(`-> Inside verifySignature, the check generatedSignature === signature is: ${generatedSignature === signature}\n`);
 
         return generatedSignature === signature;
     }
@@ -122,22 +144,31 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
     async capturePayment(
         paymentSessionData: Record<string, unknown>
     ): Promise<Record<string, unknown> | PaymentProcessorError> {
-        console.log("Capture Payment Is Called: \n", paymentSessionData.id);
+        shouldLog && console.log(`\nEsewaPaymentService's capturePayment method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id}\n`);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's capturePayment, paymentSessionData receieved is: \n`);
+        shouldLog && console.log(paymentSessionData);
+
         try {
             const transaction_uuid = paymentSessionData.id as string;
             const total_amount = paymentSessionData.total_amount as string;
             const paymentStatus = await this.client.checkPaymentStatus(transaction_uuid, total_amount);
 
             if (paymentStatus.status === "COMPLETE") {
-                return {
+                const returnObj = {
                     ...paymentSessionData,
                     ...paymentStatus,
+                    lastEditToData: "capturePayment",
                 };
+
+                shouldLog && console.log(`-> Inside EsewaPaymentService's capturePayment, since paymentStatus check return complete, what we are returning is: \n`);
+                shouldLog && console.log(returnObj);
+
+                return returnObj;
             } else {
-                return this.buildError("Payment not complete", new Error(paymentStatus));
+                throw this.buildError("In EsewaPaymentService's capturePayment method, Failed while trying to get payment status ", new Error(JSON.stringify(paymentStatus)));
             }
         } catch (e) {
-            return this.buildError("Failed to capture payment", e);
+            return this.buildError("In EsewaPaymentService's capturePayment method, Failed to capture payment", e);
         }
     }
 
@@ -151,34 +182,47 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             data: Record<string, unknown>;
         }
     > {
-        console.log("Authorized Payment Is Called: \n", paymentSessionData.id);
+        shouldLog && console.log(`\nEsewaPaymentService's authorizePayment method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id}\n`);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's authorizePayment, paymentSessionData receieved is: \n`);
+        shouldLog && console.log(paymentSessionData);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's authorizePayment, 'context' variable receieved is: \n`);
+        shouldLog && console.log(context);
+
         try {
             const transaction_uuid = paymentSessionData.id as string;
             const total_amount = paymentSessionData.total_amount as string;
             const paymentStatus = await this.client.checkPaymentStatus(transaction_uuid, total_amount);
 
-            console.log("in authorize payment status is", paymentStatus);
             if (paymentStatus.status === "COMPLETE") {
-                return {
+                const returnObj = {
                     status: PaymentSessionStatus.AUTHORIZED,
                     data: {
                         ...paymentSessionData,
                         ...paymentStatus,
+                        lastEditToData: "authorizePayment",
                     },
                 };
+
+                shouldLog && console.log(`-> Inside EsewaPaymentService's authorizePayment, since paymentStatus check return complete, what we are returning is: \n`);
+                shouldLog && console.log(returnObj);
+
+                return returnObj;
             } else {
-                throw this.buildError("Failed to authorize payment", new Error(JSON.stringify(paymentStatus)));
+                throw this.buildError("In EsewaPaymentService's authorizePayment method, Failed while trying to get payment status ", new Error(JSON.stringify(paymentStatus)));
             }
         } catch (e) {
-            return this.buildError("Failed to authorize payment", e);
+            return this.buildError("In EsewaPaymentService's authorizePayment method, Failed to authorize payment", e);
         }
     }
 
     async cancelPayment(
         paymentSessionData: Record<string, unknown>
     ): Promise<Record<string, unknown> | PaymentProcessorError> {
-        console.log("Cancel Payment Is Called: \n", paymentSessionData.id);
-        return this.buildError("Cannot cancel esewa payment", new Error("Contact Esewa to cancel payment"));
+        shouldLog && console.log(`\nEsewaPaymentService's cancelPayment method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id}\n`);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's cancelPayment, paymentSessionData receieved is: \n`);
+        shouldLog && console.log(paymentSessionData);
+
+        return this.buildError("In EsewaPaymentService's cancelPayment method, Failed to cancel payment", new Error("Contact Esewa to cancel payment"));
     }
 
     async initiatePayment(
@@ -186,15 +230,20 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
     ): Promise<
         PaymentProcessorError | PaymentProcessorSessionResponse
     > {
-        console.log("Initiate Payment Is Called: \n", context.resource_id);
+        shouldLog && console.log(`\nEsewaPaymentService's initiatePayment method has been called for cart_id i.e: PaymentProcessorContext.resource_id : ${context.resource_id}\n`);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's initiatePayment, PaymentProcessorContext receieved is: \n`);
+        shouldLog && console.log(context);
+
         try {
             const medusa = new Medusa({ baseUrl: process.env.MEDUSA_BACKEND_URL, maxRetries: 3 })
             const cartId = context.resource_id;
 
             // Retrieve the cart using Medusa client
             const { cart } = await medusa.carts.retrieve(cartId)
+            shouldLog && console.log(`-> Inside EsewaPaymentService's initiatePayment, cart receieved using 'medusa.carts.retrieve(cartId)' is: \n`);
+            shouldLog && console.log(cart);
 
-            const transaction_uuid = this.client.initiate();
+            const transaction_uuid =  context.resource_id;
             const productCode = process.env.ESEWA_PRODUCT_CODE;
             const total_amount = cart.total.toString();
 
@@ -215,16 +264,22 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
                 signature: signature,
             }
 
-            return {
+            const returnObj = {
                 session_data: {
                     id: transaction_uuid,
                     total_amount: total_amount,
                     formData: formData,
                     formSubmitURL: process.env.ESEWA_PAYMENTFORMSUBMIT_URL,
+                    lastEditToData: "initiatePayment",
                 },
-            }
+            };
+
+            shouldLog && console.log(`-> Inside EsewaPaymentService's initiatePayment, since formData creation is complete, what we are returning is: \n`);
+            shouldLog && console.log(returnObj);
+
+            return returnObj;
         } catch (e) {
-            return this.buildError("Failed to initiate payment", e);
+            return this.buildError("In EsewaPaymentService's initiatePayment method, Failed to initiate payment", e);
         }
     }
 
@@ -232,14 +287,20 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
     async deletePayment(
         paymentSessionData: Record<string, unknown>
     ): Promise<Record<string, unknown> | PaymentProcessorError> {
-        console.log("Delete Payment Is Called: \n", paymentSessionData.id);
-        return this.buildError("Cannot delete esewa payment", new Error("Contact Esewa to delete payment"));
+        shouldLog && console.log(`\nEsewaPaymentService's deletePayment method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id}\n`);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's deletePayment, paymentSessionData receieved is: \n`);
+        shouldLog && console.log(paymentSessionData);
+
+        return this.buildError("In EsewaPaymentService's deletePayment method, Failed to delete payment", new Error("Contact Esewa to delete payment"));
     }
 
     async getPaymentStatus(
         paymentSessionData: Record<string, unknown>
     ): Promise<PaymentSessionStatus> {
-        console.log("GetPaymentStatus Is Called: \n", paymentSessionData.id);
+        shouldLog && console.log(`\nEsewaPaymentService's getPaymentStatus method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id}\n`);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's getPaymentStatus, paymentSessionData receieved is: \n`);
+        shouldLog && console.log(paymentSessionData);
+
         const transaction_uuid = paymentSessionData.id as string;
         const total_amount = paymentSessionData.total_amount as number;
 
@@ -262,25 +323,38 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
         paymentSessionData: Record<string, unknown>,
         refundAmount: number
     ): Promise<Record<string, unknown> | PaymentProcessorError> {
-        console.log("Refund Payment Is Called: \n", paymentSessionData.id);
-        return this.buildError("Cannot refund esewa payment", new Error("Contact Esewa to refund payment"));
+        shouldLog && console.log(`\nEsewaPaymentService's refundPayment method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id} and refundAmount: ${refundAmount}\n`);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's refundPayment, paymentSessionData receieved is: \n`);
+        shouldLog && console.log(paymentSessionData);
+
+        return this.buildError("In EsewaPaymentService's refundPayment method, Failed to refund payment", new Error("Contact Esewa to refund payment"));
     }
 
     async retrievePayment(
         paymentSessionData: Record<string, unknown>
     ): Promise<Record<string, unknown> | PaymentProcessorError> {
-        console.log("Retrieve Payment Is Called: \n", paymentSessionData.id);
+        shouldLog && console.log(`\nEsewaPaymentService's retrievePayment method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id}\n`);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's retrievePayment, paymentSessionData receieved is: \n`);
+        shouldLog && console.log(paymentSessionData);
+
         const transaction_uuid = paymentSessionData.id as string;
         const total_amount = paymentSessionData.total_amount as number;
 
         try {
             const paymentStatus = await this.client.checkPaymentStatus(transaction_uuid, total_amount);
-            return {
+
+            const returnObj = {
                 ...paymentSessionData,
                 ...paymentStatus,
-            }
+                lastEditToData: "retrievePayment",
+            };
+
+            shouldLog && console.log(`-> Inside EsewaPaymentService's retrievePayment, since payment status check is complete, what we are returning is: \n`);
+            shouldLog && console.log(returnObj);
+
+            return returnObj;
         } catch (e) {
-            return this.buildError("Failed to retrieve payment", e);
+            return this.buildError("In EsewaPaymentService's retrievePayment method, Failed to retrieve payment", e);
         }
     }
 
@@ -289,6 +363,7 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
     // no need to update payment session in esewa because
     // we will only initiate communication with esewa
     // at last step and directly either finish or cancel payment
+    // 7/30/2024 this is called when cart is updated so we update the form data
     async updatePayment(
         context: PaymentProcessorContext
     ): Promise<
@@ -296,8 +371,56 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
         PaymentProcessorError |
         PaymentProcessorSessionResponse
     > {
-        console.log("Update Payment Is Called: \n", context.resource_id);
-        return;
+        shouldLog && console.log(`\nEsewaPaymentService's updatePayment method has been called for cart_id i.e: PaymentProcessorContext.resource_id : ${context.resource_id} \n`);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's updatePayment, PaymentProcessorContext receieved is: \n`);
+        shouldLog && console.log(context);
+
+        try {
+            const medusa = new Medusa({ baseUrl: process.env.MEDUSA_BACKEND_URL, maxRetries: 3 })
+            const cartId = context.resource_id;
+
+            // Retrieve the cart using Medusa client
+            const { cart } = await medusa.carts.retrieve(cartId)
+
+            shouldLog && console.log(`-> Inside EsewaPaymentService's updatePayment, we are getting new transaction_uuid. \n`);
+            const transaction_uuid =  context.resource_id;
+            const productCode = process.env.ESEWA_PRODUCT_CODE;
+            const total_amount = cart.total.toString();
+
+            const dataToSign = `total_amount=${total_amount},transaction_uuid=${transaction_uuid},product_code=${productCode}`;
+            const signature = this.client.generateSignature(dataToSign);
+
+            const formData = {
+                amount: cart.subtotal.toString(),
+                tax_amount: cart.tax_total.toString(),
+                total_amount: total_amount,
+                transaction_uuid: transaction_uuid,
+                product_code: productCode,
+                product_service_charge: "0",
+                product_delivery_charge: cart.shipping_total.toString(),
+                success_url: `${process.env.NEXT_PUBLIC_URL}/esewa/success`,
+                failure_url: `${process.env.NEXT_PUBLIC_URL}/esewa/failure`,
+                signed_field_names: "total_amount,transaction_uuid,product_code",
+                signature: signature,
+            }
+
+            const returnObj = {
+                session_data: {
+                    id: transaction_uuid,
+                    total_amount: total_amount,
+                    formData: formData,
+                    formSubmitURL: process.env.ESEWA_PAYMENTFORMSUBMIT_URL,
+                    lastEditToData: "updatePayment",
+                },
+            };
+
+            shouldLog && console.log(`-> Inside EsewaPaymentService's updatePayment, since formData creation is complete, what we are returning is: \n`);
+            shouldLog && console.log(returnObj);
+
+            return returnObj;
+        } catch (e) {
+            return this.buildError("In EsewaPaymentService's updatePayment method, Failed to update payment", e);
+        }
     }
 
     // Generally used to set new payment id not required here
@@ -308,47 +431,73 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
         Record<string, unknown> |
         PaymentProcessorError
     > {
-        console.log("Update Payment Data Method Is Called: \n", sessionId);
-        return;
+        shouldLog && console.log(`\nEsewaPaymentService's updatePaymentData method has been called for sessionId: ${sessionId}\n`);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's updatePaymentData, we also receive data along with sessionId. Data is: \n`);
+        shouldLog && console.log(data);
+
+        const paymentSession = await this.paymentProviderService.retrieveSession(sessionId)
+        const returnObj = {
+            id: data.transaction_uuid,
+            ...paymentSession.data,
+            lastEditToData: "updatePaymentData",
+        };
+
+        shouldLog && console.log(`-> Inside EsewaPaymentService's updatePaymentData, what we are returning is: \n`);
+        shouldLog && console.log(returnObj);
+
+        return returnObj;
     }
 
     // Handle esewa success redirect
     async handleSuccessCallback(query: any): Promise<PaymentProcessorError | { status: string }> {
-        console.log("Handle Success Callback Is Called: \n", query);
+        shouldLog && console.log(`\nEsewaPaymentService's handleSuccessCallback method has been called.: \n`);
+        shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, we also receive encodedData or 'query' variable as: \n`);
+        shouldLog && console.log(query);
+
         const encodedData = query.data;
 
         try {
             // Decode the base64 encoded response data
             const decodedData = this.client.decodeBase64Response(encodedData);
+            shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, the decodedData from encodedData is: \n`);
+            shouldLog && console.log(decodedData);
 
             // Verify the signature
             // if (!this.client.verifySignature(decodedData)) {
-            //     console.log("Invalid Signature")
+            //     shouldLog && console.log("Invalid Signature")
             //     return this.buildError("Invalid signature", new Error("Signature verification failed"));
             // }
 
             const { transaction_uuid, total_amount, status } = decodedData;
-            console.log("Decoded Data in handleSuccessCallback: \n", decodedData);
 
             if (status === "COMPLETE") {
                 const statusData = await this.client.checkPaymentStatus(transaction_uuid, total_amount);
 
                 if (statusData.status === "COMPLETE") {
+                    shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, since status check is complete what we are returning is: \n`);
+                    shouldLog && console.log({ status: "complete" });
+
                     return {
                         status: "complete",
                     };
                 } else {
+                    shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, since status check is not complete what we are returning is: \n`);
+                    shouldLog && console.log({ status: "not_complete" });
+
                     return {
                         status: "not_complete",
                     };
                 }
             } else {
+                shouldLog && console.log(`-> Inside EsewaPaymentService's updatePaymentData, since callback doesn't show complete we return: \n`);
+                shouldLog && console.log({ status: "not_complete" });
+
                 return {
                     status: "not_complete",
                 };
             }
         } catch (e) {
-            return this.buildError("Failed to handle success callback", e);
+            return this.buildError("In EsewaPaymentService's handleSuccessCallback method, Failed to handle callback", e);
         }
     }
 }
