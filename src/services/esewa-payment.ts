@@ -449,7 +449,7 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
     }
 
     // Handle esewa success redirect
-    async handleSuccessCallback(query: any): Promise<PaymentProcessorError | { status: string }> {
+    async handleSuccessCallback(query: any): Promise<PaymentProcessorError | { esewaPaymentStatus: string }> {
         shouldLog && console.log(`\nEsewaPaymentService's handleSuccessCallback method has been called.: \n`);
         shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, we also receive encodedData or 'query' variable as: \n`);
         shouldLog && console.log(query);
@@ -475,25 +475,25 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
 
                 if (statusData.status === "COMPLETE") {
                     shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, since status check is complete what we are returning is: \n`);
-                    shouldLog && console.log({ status: "complete" });
+                    shouldLog && console.log({ esewaPaymentStatus: "complete" });
 
                     return {
-                        status: "complete",
+                        esewaPaymentStatus: "complete",
                     };
                 } else {
                     shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, since status check is not complete what we are returning is: \n`);
-                    shouldLog && console.log({ status: "not_complete" });
+                    shouldLog && console.log({ esewaPaymentStatus: "not_complete" });
 
                     return {
-                        status: "not_complete",
+                        esewaPaymentStatus: "not_complete",
                     };
                 }
             } else {
                 shouldLog && console.log(`-> Inside EsewaPaymentService's updatePaymentData, since callback doesn't show complete we return: \n`);
-                shouldLog && console.log({ status: "not_complete" });
+                shouldLog && console.log({ esewaPaymentStatus: "not_complete" });
 
                 return {
-                    status: "not_complete",
+                    esewaPaymentStatus: "not_complete",
                 };
             }
         } catch (e) {
