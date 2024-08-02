@@ -327,7 +327,7 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
         shouldLog && console.log(`-> Inside EsewaPaymentService's refundPayment, paymentSessionData receieved is: \n`);
         shouldLog && console.log(paymentSessionData);
 
-        return this.buildError("In EsewaPaymentService's refundPayment method, Failed to refund payment", new Error("Contact Esewa to refund payment"));
+        throw this.buildError("In EsewaPaymentService's refundPayment method, Failed to refund payment", new Error("Contact Esewa to refund payment"));
     }
 
     async retrievePayment(

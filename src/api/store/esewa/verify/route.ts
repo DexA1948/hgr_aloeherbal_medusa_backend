@@ -16,7 +16,7 @@ export const POST = async (
 ) => {
     shouldLog && console.log(`\n/store/esewa/verify/route.ts has been called. \n`);
     shouldLog && console.log(`-> Inside /store/esewa/verify/route.ts, we have received req: MedusaRequest as: \n`);
-    shouldLog && console.log(req);
+    // shouldLog && console.log(req);
 
     const esewaService: EsewaPaymentService = req.scope.resolve("esewaPaymentService")
 
