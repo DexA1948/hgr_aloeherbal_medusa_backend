@@ -1,0 +1,2 @@
+DROP DATABASE IF EXISTS aloeherbal;
+CREATE DATABASE aloeherbal WITH OWNER aloeherbal;

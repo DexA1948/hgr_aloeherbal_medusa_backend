@@ -1,0 +1,123 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Backend",
+      "type": "shell",
+      "command": "npm start",
+      "options": {
+        "cwd": "${workspaceFolder}/aloeherbal-medusa-backend"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": [
+          {
+            "regexp": ".",
+            "file": 1,
+            "location": 2,
+            "message": 3
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Server is ready on port: 9000"
+        }
+      }
+    },
+    {
+      "label": "Reload Database",
+      "type": "shell",
+      "command": "./reload-db.bat",
+      "options": {
+        "cwd": "${workspaceFolder}/aloeherbal-medusa-backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Reload Backend",
+      "type": "shell",
+      "command": "npm run reload",
+      "options": {
+        "cwd": "${workspaceFolder}/aloeherbal-medusa-backend"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": [
+          {
+            "regexp": ".",
+            "file": 1,
+            "location": 2,
+            "message": 3
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Server is ready on port: 9000"
+        }
+      },
+      "dependsOn": "Reload Database"
+    },
+    {
+      "label": "Run Storefront Dev After Starting Backend",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/aloeherbal-medusa-storefront"
+      },
+      "problemMatcher": [],
+      "dependsOn": "Run Backend"
+    },
+    {
+      "label": "Run Storefront Dev After Reloading Backend",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/aloeherbal-medusa-storefront"
+      },
+      "problemMatcher": [],
+      "dependsOn": "Reload Backend"
+    },
+    {
+      "label": "Run Storefront Dev StandAlone",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/aloeherbal-medusa-storefront"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Reload Storefront After Reloading Backend",
+      "type": "shell",
+      "command": "npm run reload",
+      "options": {
+        "cwd": "${workspaceFolder}/aloeherbal-medusa-storefront"
+      },
+      "problemMatcher": [],
+      "dependsOn": "Reload Backend"
+    },
+    {
+      "label": "Reload Storefront After Starting Backend",
+      "type": "shell",
+      "command": "npm run reload",
+      "options": {
+        "cwd": "${workspaceFolder}/aloeherbal-medusa-storefront"
+      },
+      "problemMatcher": [],
+      "dependsOn": "Run Backend"
+    },
+    {
+      "label": "Reload Storefront StandAlone",
+      "type": "shell",
+      "command": "npm run reload",
+      "options": {
+        "cwd": "${workspaceFolder}/aloeherbal-medusa-storefront"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
