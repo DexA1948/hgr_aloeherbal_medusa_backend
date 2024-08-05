@@ -23,7 +23,9 @@
     "start": "npm run build && medusa migrations run && medusa start",
     "start:custom": "cross-env npm run build && node --preserve-symlinks --trace-warnings index.js",
     "dev": "cross-env npm run build:server && medusa develop",
-    "reload": "npm run build && medusa migrations run && npm run seed && medusa start"
+    "reload": "npm run build && medusa migrations run && npm run seed && medusa start",
+    "withstorefront": "npm run start && cd ../aloeherbal-medusa-storefront && npm run dev",
+    "reloadwithstorefront": "npm run reload && cd ../aloeherbal-medusa-storefront && npm run dev"
   },
   "dependencies": {
     "@medusajs/admin": "^7.1.14",
