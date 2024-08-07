@@ -246,21 +246,19 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             const transaction_uuid = context.resource_id;
             const productCode = process.env.ESEWA_PRODUCT_CODE;
             
-            const totalAmountCents = cart.total; // This is the amount in cents
-            const totalAmountDollars = (totalAmountCents / 100).toFixed(2).toString(); //actual price to send to esewa
-            const total_amount = totalAmountDollars;
+            const total_amount = (cart.total / 100).toString();
 
             const dataToSign = `total_amount=${total_amount},transaction_uuid=${transaction_uuid},product_code=${productCode}`;
             const signature = this.client.generateSignature(dataToSign);
 
             const formData = {
-                amount: cart.subtotal.toString(),
-                tax_amount: cart.tax_total.toString(),
+                amount: (cart.subtotal/100).toString(),
+                tax_amount: (cart.tax_total/100).toString(),
                 total_amount: total_amount,
                 transaction_uuid: transaction_uuid,
                 product_code: productCode,
                 product_service_charge: "0",
-                product_delivery_charge: cart.shipping_total.toString(),
+                product_delivery_charge: (cart.shipping_total / 100).toString(),
                 success_url: `${process.env.NEXT_PUBLIC_URL}/esewa/success`,
                 failure_url: `${process.env.NEXT_PUBLIC_URL}/esewa/failure`,
                 signed_field_names: "total_amount,transaction_uuid,product_code",
@@ -389,21 +387,19 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             const transaction_uuid = context.resource_id;
             const productCode = process.env.ESEWA_PRODUCT_CODE;
             
-            const totalAmountCents = cart.total; // This is the amount in cents
-            const totalAmountDollars = (totalAmountCents / 100).toFixed(2).toString();//actual price to send to esewa
-            const total_amount = totalAmountDollars;
+            const total_amount = (cart.total / 100).toString();//actual price to send to esewa
 
             const dataToSign = `total_amount=${total_amount},transaction_uuid=${transaction_uuid},product_code=${productCode}`;
             const signature = this.client.generateSignature(dataToSign);
 
             const formData = {
-                amount: cart.subtotal.toString(),
-                tax_amount: cart.tax_total.toString(),
+                amount: (cart.subtotal/100).toString(),
+                tax_amount: (cart.tax_total/100).toString(),
                 total_amount: total_amount,
                 transaction_uuid: transaction_uuid,
                 product_code: productCode,
                 product_service_charge: "0",
-                product_delivery_charge: cart.shipping_total.toString(),
+                product_delivery_charge: (cart.shipping_total / 100).toString(),
                 success_url: `${process.env.NEXT_PUBLIC_URL}/esewa/success`,
                 failure_url: `${process.env.NEXT_PUBLIC_URL}/esewa/failure`,
                 signed_field_names: "total_amount,transaction_uuid,product_code",
