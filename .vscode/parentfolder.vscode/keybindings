@@ -6,7 +6,7 @@
     },
     {
         "key": "ctrl+alt+1",
-        "command": "workbench.action.tasks.runTask",
+        "command": "workbench.action.tasks.runTask"
     },
     {
         "key": "ctrl+alt+2",

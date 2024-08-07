@@ -96,7 +96,7 @@ class Client {
         shouldLog && console.log(`verifySignature method has been called. \n`);
         shouldLog && console.log(`-> Inside verifySignature method we are getting data to verify the signature as: \n`);
         shouldLog && console.log(data);
-        
+
         const { signature, ...fields } = data;
         const fieldNames = fields.signed_field_names.split(",");
 
@@ -243,9 +243,12 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             shouldLog && console.log(`-> Inside EsewaPaymentService's initiatePayment, cart receieved using 'medusa.carts.retrieve(cartId)' is: \n`);
             shouldLog && console.log(cart);
 
-            const transaction_uuid =  context.resource_id;
+            const transaction_uuid = context.resource_id;
             const productCode = process.env.ESEWA_PRODUCT_CODE;
-            const total_amount = cart.total.toString();
+            
+            const totalAmountCents = cart.total; // This is the amount in cents
+            const totalAmountDollars = (totalAmountCents / 100).toFixed(2).toString(); //actual price to send to esewa
+            const total_amount = totalAmountDollars;
 
             const dataToSign = `total_amount=${total_amount},transaction_uuid=${transaction_uuid},product_code=${productCode}`;
             const signature = this.client.generateSignature(dataToSign);
@@ -383,9 +386,12 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             const { cart } = await medusa.carts.retrieve(cartId)
 
             shouldLog && console.log(`-> Inside EsewaPaymentService's updatePayment, we are getting new transaction_uuid. \n`);
-            const transaction_uuid =  context.resource_id;
+            const transaction_uuid = context.resource_id;
             const productCode = process.env.ESEWA_PRODUCT_CODE;
-            const total_amount = cart.total.toString();
+            
+            const totalAmountCents = cart.total; // This is the amount in cents
+            const totalAmountDollars = (totalAmountCents / 100).toFixed(2).toString();//actual price to send to esewa
+            const total_amount = totalAmountDollars;
 
             const dataToSign = `total_amount=${total_amount},transaction_uuid=${transaction_uuid},product_code=${productCode}`;
             const signature = this.client.generateSignature(dataToSign);
