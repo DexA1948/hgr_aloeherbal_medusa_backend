@@ -245,15 +245,15 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
 
             const transaction_uuid = context.resource_id;
             const productCode = process.env.ESEWA_PRODUCT_CODE;
-            
-            const total_amount = (cart.total / 100).toString();
+
+            const total_amount = (context.amount / 100).toString();
 
             const dataToSign = `total_amount=${total_amount},transaction_uuid=${transaction_uuid},product_code=${productCode}`;
             const signature = this.client.generateSignature(dataToSign);
 
             const formData = {
-                amount: (cart.subtotal/100).toString(),
-                tax_amount: (cart.tax_total/100).toString(),
+                amount: ((cart.subtotal - cart.discount_total)  / 100).toString(),
+                tax_amount: (cart.tax_total / 100).toString(),
                 total_amount: total_amount,
                 transaction_uuid: transaction_uuid,
                 product_code: productCode,
@@ -382,19 +382,21 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
 
             // Retrieve the cart using Medusa client
             const { cart } = await medusa.carts.retrieve(cartId)
+            shouldLog && console.log(`-> Inside EsewaPaymentService's updatePayment, cart receieved using 'medusa.carts.retrieve(cartId)' is: \n`);
+            shouldLog && console.log(cart);
 
             shouldLog && console.log(`-> Inside EsewaPaymentService's updatePayment, we are getting new transaction_uuid. \n`);
             const transaction_uuid = context.resource_id;
             const productCode = process.env.ESEWA_PRODUCT_CODE;
-            
-            const total_amount = (cart.total / 100).toString();//actual price to send to esewa
+
+            const total_amount = (context.amount / 100).toString();//actual price to send to esewa
 
             const dataToSign = `total_amount=${total_amount},transaction_uuid=${transaction_uuid},product_code=${productCode}`;
             const signature = this.client.generateSignature(dataToSign);
 
             const formData = {
-                amount: (cart.subtotal/100).toString(),
-                tax_amount: (cart.tax_total/100).toString(),
+                amount: ((cart.subtotal - cart.discount_total)  / 100).toString(),
+                tax_amount: (cart.tax_total / 100).toString(),
                 total_amount: total_amount,
                 transaction_uuid: transaction_uuid,
                 product_code: productCode,
