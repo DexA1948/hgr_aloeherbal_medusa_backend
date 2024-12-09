@@ -63,6 +63,8 @@ const plugins = [
       order_placed_template: process.env.SENDGRID_ORDER_PLACED_ID,
     },
   },
+
+  `medusa-plugin-blog`,
 ];
 
 const modules = {
