@@ -157,7 +157,7 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
                 name: order.shipping_address.first_name + ' ' + order.shipping_address.last_name,
                 phone: order.shipping_address.phone,
                 phone2: '',
-                cod_charge: '0',
+                cod_charge: order.payments[0].provider_id=="manual"? order.total : '0' ,
                 address: fullAddress,
                 fbranch: process.env.NCM_DEFAULT_CREATION || 'TINKUNE',
                 branch: order.shipping_address.postal_code,
