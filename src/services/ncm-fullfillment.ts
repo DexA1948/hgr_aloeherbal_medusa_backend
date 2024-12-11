@@ -17,7 +17,7 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
         return [
             {
                 id: "ncm-fulfillment",
-                is_return: false,
+                is_return: true,
             },
         ]
     }
