@@ -231,94 +231,165 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
     }
 
     // we have changed this using claude.ai
+    // for cod price and calculations please check
+    // async createReturn(
+    //     returnOrder: CreateReturnType
+    // ): Promise<Record<string, unknown>> {
+    //     shouldLog && console.log(`createReturn method has been called.\n`);
+    //     shouldLog && logData && console.log(`-> Inside createReturn method we are getting returnOrder as: \n`);
+    //     shouldLog && logData && console.log(returnOrder);
+
+    //     try {
+    //         // Fetch complete order details first
+    //         const order = await this.orderService_.retrieve(returnOrder.order_id, {
+    //             relations: ['shipping_address'],
+    //         });
+
+    //         shouldLog && logData && console.log(`-> Inside createReturn method, retrieved order details: \n`);
+    //         shouldLog && logData && console.log(order);
+
+    //         if (!order.shipping_address) {
+    //             throw new Error('Order shipping address is required for return shipping');
+    //         }
+
+    //         const baseUrl = process.env.NCM_BASE_URL || 'https://demo.nepalcanmove.com';
+    //         const apiToken = process.env.NCM_API_KEY;
+
+    //         if (!apiToken) {
+    //             throw new Error('NCM API token is not configured');
+    //         }
+
+    //         const fullAddress = [
+    //             order.shipping_address.address_1,
+    //             order.shipping_address.company,
+    //             order.shipping_address.city,
+    //             order.shipping_address.province,
+    //             order.shipping_address.postal_code
+    //         ]
+    //             .filter(Boolean)
+    //             .join(', ');
+
+    //         const packageDescription = returnOrder.items
+    //             .map(item => `${item.item.title} x${item.quantity}`)
+    //             .join(', ');
+
+    //         const requestBody = {
+    //             name: order.shipping_address.first_name + ' ' + order.shipping_address.last_name,
+    //             phone: order.shipping_address.phone,
+    //             phone2: '',
+    //             cod_charge: '0',
+    //             address: fullAddress,
+    //             fbranch: order.shipping_address.postal_code,  // Customer location as origin
+    //             branch: process.env.NCM_DEFAULT_CREATION || 'TINKUNE',  // Store location as destination
+    //             package: `RETURN: ${packageDescription}`,
+    //             vref_id: `RET-${order.id.slice(-7)}`,
+    //             instruction: order.shipping_address.address_2 || 'Return Order'
+    //         };
+
+    //         shouldLog && logData && console.log(`-> Inside createReturn method we are making requestBody for NCM as: \n`);
+    //         shouldLog && logData && console.log(requestBody);
+
+    //         const response = await fetch(`${baseUrl}/api/v1/order/create`, {
+    //             method: 'POST',
+    //             headers: {
+    //                 'Authorization': `Token ${apiToken}`,
+    //                 'Content-Type': 'application/json',
+    //             },
+    //             body: JSON.stringify(requestBody)
+    //         });
+
+    //         if (!response.ok) {
+    //             const errorData = await response.json().catch(() => null);
+    //             throw new Error(`Failed to create NCM return order: ${errorData?.message || response.statusText}`);
+    //         }
+
+    //         const ncmResponse = await response.json();
+
+    //         shouldLog && logData && console.log(`-> Inside createReturn method we are getting ncmResponse from NCM as: \n`);
+    //         shouldLog && logData && console.log(ncmResponse);
+
+    //         return {
+    //             id: ncmResponse.orderid || 'ncm-fulfillment-return',
+    //             ...ncmResponse,
+    //             is_return: true
+    //         };
+
+    //     } catch (error) {
+    //         console.error('Error creating NCM return:', error);
+    //         throw error;
+    //     }
+    // }
+
     async createReturn(
         returnOrder: CreateReturnType
     ): Promise<Record<string, unknown>> {
         shouldLog && console.log(`createReturn method has been called.\n`);
         shouldLog && logData && console.log(`-> Inside createReturn method we are getting returnOrder as: \n`);
         shouldLog && logData && console.log(returnOrder);
-
+    
         try {
             // Fetch complete order details first
             const order = await this.orderService_.retrieve(returnOrder.order_id, {
-                relations: ['shipping_address'],
+                relations: ['fulfillments'],
             });
-
-            shouldLog && logData && console.log(`-> Inside createReturn method, retrieved order details: \n`);
-            shouldLog && logData && console.log(order);
-
-            if (!order.shipping_address) {
-                throw new Error('Order shipping address is required for return shipping');
+    
+            // Find NCM fulfillment
+            const ncmFulfillment = order.fulfillments?.find(
+                f => f.provider_id === "ncm-fullfillment" && f.data?.orderid
+            );
+    
+            if (!ncmFulfillment?.data?.orderid) {
+                throw new Error('NCM order ID not found');
             }
-
+    
             const baseUrl = process.env.NCM_BASE_URL || 'https://demo.nepalcanmove.com';
             const apiToken = process.env.NCM_API_KEY;
-
+    
             if (!apiToken) {
                 throw new Error('NCM API token is not configured');
             }
-
-            const fullAddress = [
-                order.shipping_address.address_1,
-                order.shipping_address.company,
-                order.shipping_address.city,
-                order.shipping_address.province,
-                order.shipping_address.postal_code
-            ]
-                .filter(Boolean)
-                .join(', ');
-
-            const packageDescription = returnOrder.items
+    
+            // Create return comment
+            const returnItems = returnOrder.items
                 .map(item => `${item.item.title} x${item.quantity}`)
                 .join(', ');
-
-            const requestBody = {
-                name: order.shipping_address.first_name + ' ' + order.shipping_address.last_name,
-                phone: order.shipping_address.phone,
-                phone2: '',
-                cod_charge: '0',
-                address: fullAddress,
-                fbranch: order.shipping_address.postal_code,  // Customer location as origin
-                branch: process.env.NCM_DEFAULT_CREATION || 'TINKUNE',  // Store location as destination
-                package: `RETURN: ${packageDescription}`,
-                vref_id: `RET-${order.id.slice(-7)}`,
-                instruction: order.shipping_address.address_2 || 'Return Order'
-            };
-
-            shouldLog && logData && console.log(`-> Inside createReturn method we are making requestBody for NCM as: \n`);
-            shouldLog && logData && console.log(requestBody);
-
-            const response = await fetch(`${baseUrl}/api/v1/order/create`, {
+    
+            const commentText = `Return requested for: ${returnItems}`;
+    
+            const response = await fetch(`${baseUrl}/api/v1/comment`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Token ${apiToken}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(requestBody)
+                body: JSON.stringify({
+                    orderid: ncmFulfillment.data.orderid,
+                    comments: commentText
+                })
             });
-
+    
             if (!response.ok) {
                 const errorData = await response.json().catch(() => null);
-                throw new Error(`Failed to create NCM return order: ${errorData?.message || response.statusText}`);
+                throw new Error(`Failed to create NCM return comment: ${errorData?.message || response.statusText}`);
             }
-
-            const ncmResponse = await response.json();
-
-            shouldLog && logData && console.log(`-> Inside createReturn method we are getting ncmResponse from NCM as: \n`);
-            shouldLog && logData && console.log(ncmResponse);
-
+    
+            const commentResponse = await response.json();
+    
+            shouldLog && logData && console.log(`-> Inside createReturn method, posted comment response from NCM: \n`);
+            shouldLog && logData && console.log(commentResponse);
+    
+            // Return original NCM order data plus return flag
             return {
-                id: ncmResponse.orderid || 'ncm-fulfillment-return',
-                ...ncmResponse,
+                ...ncmFulfillment.data,
                 is_return: true
             };
-
+    
         } catch (error) {
-            console.error('Error creating NCM return:', error);
+            console.error('Error creating NCM return comment:', error);
             throw error;
         }
     }
-
+    
     // Do nothing here
     // NCM doesnt have api for this
     async getFulfillmentDocuments(
