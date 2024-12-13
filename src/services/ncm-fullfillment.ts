@@ -1,5 +1,14 @@
-import { AbstractFulfillmentService, Cart, Fulfillment, LineItem, Order } from "@medusajs/medusa"
-import { CreateReturnType } from "@medusajs/medusa/dist/types/fulfillment-provider"
+import {
+    AbstractFulfillmentService,
+    Cart,
+    Fulfillment,
+    LineItem,
+    Order
+} from "@medusajs/medusa"
+import {
+    CreateReturnType
+} from "@medusajs/medusa/dist/types/fulfillment-provider"
+import OrderService from "@medusajs/medusa/dist/services/order"
 
 require('dotenv').config();
 const shouldLog = process.env.NCM_LOGGING_TRUE === 'true';
@@ -7,17 +16,21 @@ const logData = true;
 
 class NcmFullfillmentService extends AbstractFulfillmentService {
     static identifier = "ncm-fullfillment"
+    protected orderService_: OrderService;
 
-    constructor(container) {
+    constructor(container: Record<string, unknown>) {
         super(container)
+        this.orderService_ = container.orderService as OrderService
     }
 
     async getFulfillmentOptions(): Promise<any[]> {
         shouldLog && logData && console.log(`getFulfillmentOptions method has been called.\n`);
         return [
             {
-                id: "ncm-fulfillment",
-                is_return: true,
+                id: "ncm-fulfillment"
+            },
+            {
+                id: "ncm-fulfillment-return"
             },
         ]
     }
@@ -34,8 +47,10 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
         shouldLog && logData && console.log(data);
         shouldLog && logData && console.log(`-> Inside validateFulfillmentData method we are getting cart as: \n`);
         shouldLog && logData && console.log(cart);
-        if (optionData.id !== "ncm-fulfillment") {
-            throw new Error("invalid data")
+
+        // Allow both regular and return fulfillment
+        if (optionData.id !== "ncm-fulfillment" && optionData.id !== "ncm-fulfillment-return") {
+            throw new Error("invalid fulfillment option")
         }
         return {
             ...data,
@@ -48,7 +63,7 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
         shouldLog && console.log(`validateOption method has been called.\n`);
         shouldLog && logData && console.log(`-> Inside validateOption method we are getting data as: \n`);
         shouldLog && logData && console.log(data);
-        return data.id == "ncm-fulfillment"
+        return data.id === "ncm-fulfillment" || data.id === "ncm-fulfillment-return"
     }
 
     async canCalculate(
@@ -60,7 +75,6 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
         return true
     }
 
-    // with generous help of claude.ai
     async calculatePrice(
         optionData: Record<string, any>,
         data: Record<string, any>,
@@ -74,7 +88,11 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
         shouldLog && logData && console.log(`-> Inside calculatePrice method we are getting cart as: \n`);
         shouldLog && logData && console.log(cart);
 
-        const destination = cart.shipping_address?.postal_code;
+        // For returns, use the customer's address as origin
+        const isReturn = optionData.id === "ncm-fulfillment-return";
+        const destination = isReturn
+            ? process.env.NCM_DEFAULT_CREATION || 'TINKUNE'  // Return destination is the store
+            : cart.shipping_address?.postal_code;  // Regular shipping destination is customer
 
         if (!destination || destination.trim() === '') {
             throw new Error('Postal code is required for shipping rate calculation');
@@ -82,11 +100,13 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
 
         try {
             const baseUrl = process.env.NCM_BASE_URL || 'https://demo.nepalcanmove.com';
-            const pickupType = process.env.NCM_PICKUP_TYPE || 'Pickup/Collect';
-            const defaultCreation = process.env.NCM_DEFAULT_CREATION || 'TINKUNE';
+            const pickupType = isReturn ? 'Return' : (process.env.NCM_PICKUP_TYPE || 'Pickup/Collect');
+            const origin = isReturn
+                ? cart.shipping_address?.postal_code
+                : (process.env.NCM_DEFAULT_CREATION || 'TINKUNE');
 
             const url = new URL(`${baseUrl}/api/v1/shipping-rate`);
-            url.searchParams.append('creation', defaultCreation);
+            url.searchParams.append('creation', origin);
             url.searchParams.append('destination', destination);
             url.searchParams.append('type', pickupType);
 
@@ -101,11 +121,11 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
             shouldLog && logData && console.log(`-> Inside calculatePrice method we are getting rateData from NCM as: \n`);
             shouldLog && logData && console.log(rateData);
 
-            return rateData.charge * 100 || 30000; // Adjust according to your API response structure
+            return rateData.charge * 100 || 30000;
 
         } catch (error) {
             console.error('Error calculating shipping rate:', error);
-            throw error; // Re-throwing error instead of returning 0
+            throw error;
         }
     }
 
@@ -157,7 +177,7 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
                 name: order.shipping_address.first_name + ' ' + order.shipping_address.last_name,
                 phone: order.shipping_address.phone,
                 phone2: '',
-                cod_charge: order.payments[0].provider_id=="manual"? order.total : '0' ,
+                cod_charge: order.payments[0].provider_id == "manual" ? order.total/100 : '0',
                 address: fullAddress,
                 fbranch: process.env.NCM_DEFAULT_CREATION || 'TINKUNE',
                 branch: order.shipping_address.postal_code,
@@ -210,15 +230,93 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
         return {}
     }
 
-    // Do nothing here
-    // NCM doesnt have api for this
+    // we have changed this using claude.ai
     async createReturn(
         returnOrder: CreateReturnType
     ): Promise<Record<string, unknown>> {
         shouldLog && console.log(`createReturn method has been called.\n`);
         shouldLog && logData && console.log(`-> Inside createReturn method we are getting returnOrder as: \n`);
         shouldLog && logData && console.log(returnOrder);
-        return {}
+
+        try {
+            // Fetch complete order details first
+            const order = await this.orderService_.retrieve(returnOrder.order_id, {
+                relations: ['shipping_address'],
+            });
+
+            shouldLog && logData && console.log(`-> Inside createReturn method, retrieved order details: \n`);
+            shouldLog && logData && console.log(order);
+
+            if (!order.shipping_address) {
+                throw new Error('Order shipping address is required for return shipping');
+            }
+
+            const baseUrl = process.env.NCM_BASE_URL || 'https://demo.nepalcanmove.com';
+            const apiToken = process.env.NCM_API_KEY;
+
+            if (!apiToken) {
+                throw new Error('NCM API token is not configured');
+            }
+
+            const fullAddress = [
+                order.shipping_address.address_1,
+                order.shipping_address.company,
+                order.shipping_address.city,
+                order.shipping_address.province,
+                order.shipping_address.postal_code
+            ]
+                .filter(Boolean)
+                .join(', ');
+
+            const packageDescription = returnOrder.items
+                .map(item => `${item.item.title} x${item.quantity}`)
+                .join(', ');
+
+            const requestBody = {
+                name: order.shipping_address.first_name + ' ' + order.shipping_address.last_name,
+                phone: order.shipping_address.phone,
+                phone2: '',
+                cod_charge: '0',
+                address: fullAddress,
+                fbranch: order.shipping_address.postal_code,  // Customer location as origin
+                branch: process.env.NCM_DEFAULT_CREATION || 'TINKUNE',  // Store location as destination
+                package: `RETURN: ${packageDescription}`,
+                vref_id: `RET-${order.id.slice(-7)}`,
+                instruction: order.shipping_address.address_2 || 'Return Order'
+            };
+
+            shouldLog && logData && console.log(`-> Inside createReturn method we are making requestBody for NCM as: \n`);
+            shouldLog && logData && console.log(requestBody);
+
+            const response = await fetch(`${baseUrl}/api/v1/order/create`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Token ${apiToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(`Failed to create NCM return order: ${errorData?.message || response.statusText}`);
+            }
+
+            const ncmResponse = await response.json();
+
+            shouldLog && logData && console.log(`-> Inside createReturn method we are getting ncmResponse from NCM as: \n`);
+            shouldLog && logData && console.log(ncmResponse);
+
+            return {
+                id: ncmResponse.orderid || 'ncm-fulfillment-return',
+                ...ncmResponse,
+                is_return: true
+            };
+
+        } catch (error) {
+            console.error('Error creating NCM return:', error);
+            throw error;
+        }
     }
 
     // Do nothing here
