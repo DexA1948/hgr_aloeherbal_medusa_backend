@@ -1,16 +1,17 @@
+// File: src\services\esewa-payment.ts
+
 import axios from "axios";
-import crypto, { sign } from "crypto";
+import crypto from "crypto";
 import {
     AbstractPaymentProcessor,
-    isPaymentProcessorError,
     PaymentProcessorContext,
     PaymentProcessorError,
     PaymentProcessorSessionResponse,
     PaymentProviderService,
     PaymentSessionStatus,
 } from "@medusajs/medusa";
-import { EOL } from "os";
 import Medusa from "@medusajs/medusa-js"
+import { MedusaError } from "@medusajs/utils"
 
 require('dotenv').config();
 
@@ -126,24 +127,9 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
         this.paymentProviderService = container.paymentProviderService;
     }
 
-    protected buildError(
-        message: string,
-        e: PaymentProcessorError | Error
-    ): PaymentProcessorError {
-        return {
-            error: message,
-            code: "code" in e ? e.code : "",
-            detail: isPaymentProcessorError(e)
-                ? `${e.error}${EOL}${e.detail ?? ""}`
-                : "detail" in e
-                    ? e.detail
-                    : e.message ?? "",
-        };
-    }
-
     async capturePayment(
         paymentSessionData: Record<string, unknown>
-    ): Promise<Record<string, unknown> | PaymentProcessorError> {
+    ): Promise<Record<string, unknown>> {
         shouldLog && console.log(`\nEsewaPaymentService's capturePayment method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id}\n`);
         shouldLog && console.log(`-> Inside EsewaPaymentService's capturePayment, paymentSessionData receieved is: \n`);
         shouldLog && console.log(paymentSessionData);
@@ -164,24 +150,30 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
                 shouldLog && console.log(returnObj);
 
                 return returnObj;
-            } else {
-                throw this.buildError("In EsewaPaymentService's capturePayment method, Failed while trying to get payment status ", new Error(JSON.stringify(paymentStatus)));
             }
-        } catch (e) {
-            return this.buildError("In EsewaPaymentService's capturePayment method, Failed to capture payment", e);
+
+            throw new MedusaError(
+                MedusaError.Types.PAYMENT_AUTHORIZATION_ERROR,
+                "Failed to capture eSewa payment: Status not complete",
+                "ESEWA_CAPTURE_FAILED"
+            )
+        } catch (error) {
+            throw new MedusaError(
+                MedusaError.Types.UNEXPECTED_STATE,
+                "An error occurred while capturing payment",
+                "ESEWA_CAPTURE_ERROR",
+                error.message
+            )
         }
     }
 
     async authorizePayment(
         paymentSessionData: Record<string, unknown>,
         context: Record<string, unknown>
-    ): Promise<
-        PaymentProcessorError |
-        {
-            status: PaymentSessionStatus;
-            data: Record<string, unknown>;
-        }
-    > {
+    ): Promise<{
+        status: PaymentSessionStatus;
+        data: Record<string, unknown>;
+    }> {
         shouldLog && console.log(`\nEsewaPaymentService's authorizePayment method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id}\n`);
         shouldLog && console.log(`-> Inside EsewaPaymentService's authorizePayment, paymentSessionData receieved is: \n`);
         shouldLog && console.log(paymentSessionData);
@@ -207,29 +199,41 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
                 shouldLog && console.log(returnObj);
 
                 return returnObj;
-            } else {
-                throw this.buildError("In EsewaPaymentService's authorizePayment method, Failed while trying to get payment status ", new Error(JSON.stringify(paymentStatus)));
             }
-        } catch (e) {
-            return this.buildError("In EsewaPaymentService's authorizePayment method, Failed to authorize payment", e);
+
+            throw new MedusaError(
+                MedusaError.Types.PAYMENT_AUTHORIZATION_ERROR,
+                "Payment authorization failed: Status not complete",
+                "ESEWA_AUTH_FAILED",
+                JSON.stringify(paymentStatus)
+            )
+        } catch (error) {
+            throw new MedusaError(
+                MedusaError.Types.UNEXPECTED_STATE,
+                "An error occurred during payment authorization",
+                "ESEWA_AUTH_ERROR",
+                error.message
+            )
         }
     }
 
     async cancelPayment(
         paymentSessionData: Record<string, unknown>
-    ): Promise<Record<string, unknown> | PaymentProcessorError> {
+    ): Promise<Record<string, unknown>> {
         shouldLog && console.log(`\nEsewaPaymentService's cancelPayment method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id}\n`);
         shouldLog && console.log(`-> Inside EsewaPaymentService's cancelPayment, paymentSessionData receieved is: \n`);
         shouldLog && console.log(paymentSessionData);
 
-        return this.buildError("In EsewaPaymentService's cancelPayment method, Failed to cancel payment", new Error("Contact Esewa to cancel payment"));
+        throw new MedusaError(
+            MedusaError.Types.NOT_ALLOWED,
+            "eSewa payments cannot be cancelled through the API",
+            "ESEWA_CANCEL_NOT_SUPPORTED"
+        )
     }
 
     async initiatePayment(
         context: PaymentProcessorContext
-    ): Promise<
-        PaymentProcessorError | PaymentProcessorSessionResponse
-    > {
+    ): Promise<PaymentProcessorSessionResponse> {
         shouldLog && console.log(`\nEsewaPaymentService's initiatePayment method has been called for cart_id i.e: PaymentProcessorContext.resource_id : ${context.resource_id}\n`);
         shouldLog && console.log(`-> Inside EsewaPaymentService's initiatePayment, PaymentProcessorContext receieved is: \n`);
         shouldLog && console.log(context);
@@ -238,6 +242,14 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             const medusa = new Medusa({ baseUrl: process.env.MEDUSA_BACKEND_URL, maxRetries: 3 })
             const cartId = context.resource_id;
 
+            if (!process.env.ESEWA_PRODUCT_CODE || !process.env.ESEWA_PAYMENTFORMSUBMIT_URL) {
+                throw new MedusaError(
+                    MedusaError.Types.INVALID_DATA,
+                    "Missing eSewa configuration",
+                    "ESEWA_CONFIG_ERROR"
+                )
+            }
+
             // Retrieve the cart using Medusa client
             const { cart } = await medusa.carts.retrieve(cartId)
             shouldLog && console.log(`-> Inside EsewaPaymentService's initiatePayment, cart receieved using 'medusa.carts.retrieve(cartId)' is: \n`);
@@ -245,14 +257,13 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
 
             const transaction_uuid = context.resource_id;
             const productCode = process.env.ESEWA_PRODUCT_CODE;
-
             const total_amount = (context.amount / 100).toString();
 
             const dataToSign = `total_amount=${total_amount},transaction_uuid=${transaction_uuid},product_code=${productCode}`;
             const signature = this.client.generateSignature(dataToSign);
 
             const formData = {
-                amount: ((cart.subtotal - cart.discount_total)  / 100).toString(),
+                amount: ((cart.subtotal - cart.discount_total) / 100).toString(),
                 tax_amount: (cart.tax_total / 100).toString(),
                 total_amount: total_amount,
                 transaction_uuid: transaction_uuid,
@@ -279,20 +290,28 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             shouldLog && console.log(returnObj);
 
             return returnObj;
-        } catch (e) {
-            return this.buildError("In EsewaPaymentService's initiatePayment method, Failed to initiate payment", e);
+        } catch (error) {
+            throw new MedusaError(
+                MedusaError.Types.UNEXPECTED_STATE,
+                "An error occurred while initiating payment",
+                "ESEWA_INIT_ERROR",
+                error.message
+            )
         }
     }
 
-
     async deletePayment(
         paymentSessionData: Record<string, unknown>
-    ): Promise<Record<string, unknown> | PaymentProcessorError> {
+    ): Promise<Record<string, unknown>> {
         shouldLog && console.log(`\nEsewaPaymentService's deletePayment method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id}\n`);
         shouldLog && console.log(`-> Inside EsewaPaymentService's deletePayment, paymentSessionData receieved is: \n`);
         shouldLog && console.log(paymentSessionData);
 
-        return this.buildError("In EsewaPaymentService's deletePayment method, Failed to delete payment", new Error("Contact Esewa to delete payment"));
+        throw new MedusaError(
+            MedusaError.Types.NOT_ALLOWED,
+            "eSewa payments cannot be deleted through the API",
+            "ESEWA_DELETE_NOT_SUPPORTED"
+        )
     }
 
     async getPaymentStatus(
@@ -315,11 +334,13 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
                 NOT_FOUND: PaymentSessionStatus.CANCELED,
             };
             return statusMap[statusData.status] || PaymentSessionStatus.ERROR;
-        } catch (e) {
+        } catch (error) {
+            // We return PENDING instead of throwing since this is used in critical flows
             return PaymentSessionStatus.PENDING;
         }
     }
 
+    // In your eSewa payment provider
     async refundPayment(
         paymentSessionData: Record<string, unknown>,
         refundAmount: number
@@ -328,20 +349,26 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
         shouldLog && console.log(`-> Inside EsewaPaymentService's refundPayment, paymentSessionData receieved is: \n`);
         shouldLog && console.log(paymentSessionData);
 
-        throw this.buildError("In EsewaPaymentService's refundPayment method, Failed to refund payment", new Error("Contact Esewa to refund payment"));
+        return {
+            id: paymentSessionData.id,
+            refunded_amount: refundAmount,
+            status: "requires_action",
+            data: {
+                manual_refund_required: true,
+                provider: "esewa-payment"
+            }
+        }
     }
-
     async retrievePayment(
         paymentSessionData: Record<string, unknown>
-    ): Promise<Record<string, unknown> | PaymentProcessorError> {
+    ): Promise<Record<string, unknown>> {
         shouldLog && console.log(`\nEsewaPaymentService's retrievePayment method has been called for transaction_uuid i.e: paymentSessionData.id : ${paymentSessionData.id}\n`);
         shouldLog && console.log(`-> Inside EsewaPaymentService's retrievePayment, paymentSessionData receieved is: \n`);
         shouldLog && console.log(paymentSessionData);
 
-        const transaction_uuid = paymentSessionData.id as string;
-        const total_amount = paymentSessionData.total_amount as number;
-
         try {
+            const transaction_uuid = paymentSessionData.id as string;
+            const total_amount = paymentSessionData.total_amount as number;
             const paymentStatus = await this.client.checkPaymentStatus(transaction_uuid, total_amount);
 
             const returnObj = {
@@ -354,24 +381,19 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             shouldLog && console.log(returnObj);
 
             return returnObj;
-        } catch (e) {
-            return this.buildError("In EsewaPaymentService's retrievePayment method, Failed to retrieve payment", e);
+        } catch (error) {
+            throw new MedusaError(
+                MedusaError.Types.UNEXPECTED_STATE,
+                "Failed to retrieve payment status",
+                "ESEWA_RETRIEVE_ERROR",
+                error.message
+            )
         }
     }
 
-    // doesn't change payment session
-    // used to update payment info client like stripe and paypal
-    // no need to update payment session in esewa because
-    // we will only initiate communication with esewa
-    // at last step and directly either finish or cancel payment
-    // 7/30/2024 this is called when cart is updated so we update the form data
     async updatePayment(
         context: PaymentProcessorContext
-    ): Promise<
-        void |
-        PaymentProcessorError |
-        PaymentProcessorSessionResponse
-    > {
+    ): Promise<void | PaymentProcessorSessionResponse> {
         shouldLog && console.log(`\nEsewaPaymentService's updatePayment method has been called for cart_id i.e: PaymentProcessorContext.resource_id : ${context.resource_id} \n`);
         shouldLog && console.log(`-> Inside EsewaPaymentService's updatePayment, PaymentProcessorContext receieved is: \n`);
         shouldLog && console.log(context);
@@ -380,7 +402,6 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             const medusa = new Medusa({ baseUrl: process.env.MEDUSA_BACKEND_URL, maxRetries: 3 })
             const cartId = context.resource_id;
 
-            // Retrieve the cart using Medusa client
             const { cart } = await medusa.carts.retrieve(cartId)
             shouldLog && console.log(`-> Inside EsewaPaymentService's updatePayment, cart receieved using 'medusa.carts.retrieve(cartId)' is: \n`);
             shouldLog && console.log(cart);
@@ -388,14 +409,13 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             shouldLog && console.log(`-> Inside EsewaPaymentService's updatePayment, we are getting new transaction_uuid. \n`);
             const transaction_uuid = context.resource_id;
             const productCode = process.env.ESEWA_PRODUCT_CODE;
-
-            const total_amount = (context.amount / 100).toString();//actual price to send to esewa
+            const total_amount = (context.amount / 100).toString();
 
             const dataToSign = `total_amount=${total_amount},transaction_uuid=${transaction_uuid},product_code=${productCode}`;
             const signature = this.client.generateSignature(dataToSign);
 
             const formData = {
-                amount: ((cart.subtotal - cart.discount_total)  / 100).toString(),
+                amount: ((cart.subtotal - cart.discount_total) / 100).toString(),
                 tax_amount: (cart.tax_total / 100).toString(),
                 total_amount: total_amount,
                 transaction_uuid: transaction_uuid,
@@ -422,46 +442,55 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             shouldLog && console.log(returnObj);
 
             return returnObj;
-        } catch (e) {
-            return this.buildError("In EsewaPaymentService's updatePayment method, Failed to update payment", e);
+        } catch (error) {
+            throw new MedusaError(
+                MedusaError.Types.INVALID_DATA,
+                "Failed to update payment session",
+                "ESEWA_UPDATE_ERROR",
+                error.message
+            )
         }
     }
 
-    // Generally used to set new payment id not required here
     async updatePaymentData(
         sessionId: string,
         data: Record<string, unknown>
-    ): Promise<
-        Record<string, unknown> |
-        PaymentProcessorError
-    > {
+    ): Promise<Record<string, unknown>> {
         shouldLog && console.log(`\nEsewaPaymentService's updatePaymentData method has been called for sessionId: ${sessionId}\n`);
         shouldLog && console.log(`-> Inside EsewaPaymentService's updatePaymentData, we also receive data along with sessionId. Data is: \n`);
         shouldLog && console.log(data);
 
-        const paymentSession = await this.paymentProviderService.retrieveSession(sessionId)
-        const returnObj = {
-            id: data.transaction_uuid,
-            ...paymentSession.data,
-            lastEditToData: "updatePaymentData",
-        };
+        try {
+            const paymentSession = await this.paymentProviderService.retrieveSession(sessionId)
+            const returnObj = {
+                id: data.transaction_uuid,
+                ...paymentSession.data,
+                lastEditToData: "updatePaymentData",
+            };
 
-        shouldLog && console.log(`-> Inside EsewaPaymentService's updatePaymentData, what we are returning is: \n`);
-        shouldLog && console.log(returnObj);
+            shouldLog && console.log(`-> Inside EsewaPaymentService's updatePaymentData, what we are returning is: \n`);
+            shouldLog && console.log(returnObj);
 
-        return returnObj;
+            return returnObj;
+        } catch (error) {
+            throw new MedusaError(
+                MedusaError.Types.INVALID_DATA,
+                "Failed to update payment data",
+                "ESEWA_UPDATE_DATA_ERROR",
+                error.message
+            )
+        }
     }
 
-    // Handle esewa success redirect
-    async handleSuccessCallback(query: any): Promise<PaymentProcessorError | { esewaPaymentStatus: string }> {
+    async handleSuccessCallback(
+        query: any
+    ): Promise<{ esewaPaymentStatus: string }> {
         shouldLog && console.log(`\nEsewaPaymentService's handleSuccessCallback method has been called.: \n`);
         shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, we also receive encodedData or 'query' variable as: \n`);
         shouldLog && console.log(query);
 
-        const encodedData = query.data;
-
         try {
-            // Decode the base64 encoded response data
+            const encodedData = query.data;
             const decodedData = this.client.decodeBase64Response(encodedData);
             shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, the decodedData from encodedData is: \n`);
             shouldLog && console.log(decodedData);
@@ -469,7 +498,11 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             // Verify the signature
             // if (!this.client.verifySignature(decodedData)) {
             //     shouldLog && console.log("Invalid Signature")
-            //     return this.buildError("Invalid signature", new Error("Signature verification failed"));
+            //     throw new MedusaError(
+            //         MedusaError.Types.INVALID_DATA,
+            //         "Invalid signature in callback",
+            //         "ESEWA_INVALID_SIGNATURE"
+            //     )
             // }
 
             const { transaction_uuid, total_amount, status } = decodedData;
@@ -477,31 +510,26 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             if (status === "COMPLETE") {
                 const statusData = await this.client.checkPaymentStatus(transaction_uuid, total_amount);
 
-                if (statusData.status === "COMPLETE") {
-                    shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, since status check is complete what we are returning is: \n`);
-                    shouldLog && console.log({ esewaPaymentStatus: "complete" });
-
-                    return {
-                        esewaPaymentStatus: "complete",
-                    };
-                } else {
-                    shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, since status check is not complete what we are returning is: \n`);
-                    shouldLog && console.log({ esewaPaymentStatus: "not_complete" });
-
-                    return {
-                        esewaPaymentStatus: "not_complete",
-                    };
-                }
-            } else {
-                shouldLog && console.log(`-> Inside EsewaPaymentService's updatePaymentData, since callback doesn't show complete we return: \n`);
-                shouldLog && console.log({ esewaPaymentStatus: "not_complete" });
+                const paymentStatus = statusData.status === "COMPLETE" ? "complete" : "not_complete";
+                shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, returning status: ${paymentStatus}`);
 
                 return {
-                    esewaPaymentStatus: "not_complete",
+                    esewaPaymentStatus: paymentStatus
                 };
             }
-        } catch (e) {
-            return this.buildError("In EsewaPaymentService's handleSuccessCallback method, Failed to handle callback", e);
+
+            shouldLog && console.log(`-> Inside EsewaPaymentService's handleSuccessCallback, since status check is not complete what we are returning is: \n`);
+            shouldLog && console.log({ esewaPaymentStatus: "not_complete" });
+            return {
+                esewaPaymentStatus: "not_complete"
+            };
+        } catch (error) {
+            throw new MedusaError(
+                MedusaError.Types.UNEXPECTED_STATE,
+                "Failed to handle callback",
+                "ESEWA_CALLBACK_ERROR",
+                error.message
+            )
         }
     }
 }

@@ -1,4 +1,5 @@
 // src/admin/widgets/ncm-order-details-widget.tsx
+
 import { useEffect, useState } from "react"
 import { WidgetConfig, WidgetProps } from "@medusajs/admin"
 import {
@@ -10,8 +11,10 @@ import {
     FocusModal,
     Button,
     Input,
-    Label
+    Label,
+    IconButton
 } from "@medusajs/ui"
+import { ArrowLeft, ArrrowRight } from "@medusajs/icons"
 import type {
     NCMComment,
     NCMOrderDetails,
@@ -30,43 +33,31 @@ const NCMOrderDetailsWidget = ({ order, notify }: Props) => {
     const [error, setError] = useState<string | null>(null)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [newComment, setNewComment] = useState("")
+    const [currentFulfillmentIndex, setCurrentFulfillmentIndex] = useState(0)
 
-    // Get NCM order ID from fulfillment data
-    const getNcmOrderId = () => {
-        const fulfillment = order.fulfillments?.find(
-            (f: any) => f.provider_id === "ncm-fullfillment"
-        )
-        return fulfillment?.data?.orderid
-    }
+    // Get NCM fulfillments from order
+    const ncmFulfillments = order.fulfillments?.filter(
+        (f: any) => f.provider_id === "ncm-fullfillment" && f.data?.orderid
+    ) || []
 
-    const ncmOrderId = getNcmOrderId()
+    const currentNcmOrderId = ncmFulfillments[currentFulfillmentIndex]?.data?.orderid
 
-    // Validate and transform data to handle all cases
-    const validateData = (data: any): any[] => {
-        if (!data) return []
-        if (Array.isArray(data)) return data
-        // Handle the error response case for no comments
-        if (data.detail === "No comments found") return []
-        if (typeof data === 'object') return [data]
-        return []
-    }
+    const canNavigateNext = currentFulfillmentIndex < ncmFulfillments.length - 1
+    const canNavigatePrev = currentFulfillmentIndex > 0
 
     const fetchNCMData = async () => {
-        if (!ncmOrderId) return
+        if (!currentNcmOrderId) return
 
         try {
             setIsLoading(true)
             setError(null)
 
-            // Fetch all NCM data in parallel
             const [commentsRes, detailsRes, statusesRes] = await Promise.all([
-                fetch(`/admin/ncm/comments/${ncmOrderId}`),
-                fetch(`/admin/ncm/order/${ncmOrderId}`),
-                fetch(`/admin/ncm/status/${ncmOrderId}`)
+                fetch(`/admin/ncm/comments/${currentNcmOrderId}`),
+                fetch(`/admin/ncm/order/${currentNcmOrderId}`),
+                fetch(`/admin/ncm/status/${currentNcmOrderId}`)
             ])
 
-            // We only throw errors for failed orders/status fetch
-            // Comments can return "No comments found"
             if (!detailsRes.ok || !statusesRes.ok) {
                 throw new Error("Failed to fetch NCM data")
             }
@@ -77,14 +68,14 @@ const NCMOrderDetailsWidget = ({ order, notify }: Props) => {
                 statusesRes.json()
             ])
 
-            // Apply validation/transformation
-            setComments(validateData(commentsData))
-            setOrderDetails(detailsData)
-            setOrderStatuses(validateData(statusesData))
+            // Handle no comments case
+            const validComments = commentsData.detail === "No comments found" ? [] : commentsData
 
+            setComments(validComments)
+            setOrderDetails(detailsData)
+            setOrderStatuses(statusesData)
         } catch (err) {
             const message = err instanceof Error ? err.message : "An error occurred"
-            console.error("Fetch error:", err)
             setError(message)
             notify.error("Error", message)
         } finally {
@@ -93,10 +84,10 @@ const NCMOrderDetailsWidget = ({ order, notify }: Props) => {
     }
 
     const postComment = async () => {
-        if (!ncmOrderId || !newComment.trim()) return
+        if (!currentNcmOrderId || !newComment.trim()) return
 
         try {
-            const response = await fetch(`/admin/ncm/comments/${ncmOrderId}`, {
+            const response = await fetch(`/admin/ncm/comments/${currentNcmOrderId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -120,16 +111,13 @@ const NCMOrderDetailsWidget = ({ order, notify }: Props) => {
     }
 
     useEffect(() => {
-        if (ncmOrderId) {
+        if (currentNcmOrderId) {
             fetchNCMData()
         }
-    }, [ncmOrderId])
+    }, [currentNcmOrderId])
 
-    if (!ncmOrderId) {
-        return null // Don't render widget if not NCM order
-    }
+    if (ncmFulfillments.length === 0) return null
 
-    // Render loading state
     if (isLoading) {
         return (
             <Container>
@@ -140,7 +128,6 @@ const NCMOrderDetailsWidget = ({ order, notify }: Props) => {
         )
     }
 
-    // Render error state
     if (error) {
         return (
             <Container>
@@ -158,7 +145,31 @@ const NCMOrderDetailsWidget = ({ order, notify }: Props) => {
     return (
         <>
             <Container>
-                <div className="p-4 space-y-6">
+                <div className="px-4 space-y-6">
+                    {/* Fulfillment Navigation Header */}
+                    <div className="flex items-center justify-between mb-4">
+                        <Text className="text-ui-fg-subtle">
+                            There are {ncmFulfillments.length} NCM fulfillments associated with this order.
+                        </Text>
+                        <div className="flex items-center gap-2">
+                            <IconButton
+                                onClick={() => setCurrentFulfillmentIndex(prev => prev - 1)}
+                                disabled={!canNavigatePrev}
+                            >
+                                <ArrowLeft />
+                            </IconButton>
+                            <Text>
+                                Fulfillment {currentFulfillmentIndex + 1}: NCM #{currentNcmOrderId}
+                            </Text>
+                            <IconButton
+                                onClick={() => setCurrentFulfillmentIndex(prev => prev + 1)}
+                                disabled={!canNavigateNext}
+                            >
+                                <ArrrowRight />
+                            </IconButton>
+                        </div>
+                    </div>
+
                     {/* Order Details Section */}
                     <div>
                         <Heading level="h2">NCM Order Details</Heading>
@@ -179,6 +190,10 @@ const NCMOrderDetailsWidget = ({ order, notify }: Props) => {
                                 <div>
                                     <Text className="text-ui-fg-subtle">Delivery Status</Text>
                                     <Badge>{orderDetails.last_delivery_status}</Badge>
+                                </div>
+                                <div>
+                                    <Text className="text-ui-fg-subtle">Tracking ID</Text>
+                                    <Text>{orderDetails.trackid}</Text>
                                 </div>
                             </div>
                         )}
@@ -248,7 +263,7 @@ const NCMOrderDetailsWidget = ({ order, notify }: Props) => {
                         </Table>
                     </div>
 
-                    {/* Add comment modal */}
+                    {/* Add Comment Modal */}
                     <FocusModal open={isModalOpen} onOpenChange={setIsModalOpen}>
                         <FocusModal.Content>
                             <FocusModal.Header>

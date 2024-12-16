@@ -1,3 +1,5 @@
+//File: src\admin\components\shared\card.tsx
+
 import { Text, clx } from "@medusajs/ui"
 
 type CardProps = {

@@ -1,3 +1,5 @@
+// File: src\admin\widgets\product-widget.tsx
+
 import type { ProductDetailsWidgetProps, WidgetConfig } from "@medusajs/admin"
 import { useAdminProductTags } from "medusa-react"
 
