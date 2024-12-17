@@ -52,39 +52,35 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
         data: Record<string, unknown>,
         cart: Cart
     ): Promise<Record<string, unknown>> {
-        try {
-            shouldLog && console.log(`validateFulfillmentData method has been called.\n`);
-            shouldLog && logData && console.log(optionData, data, cart);
+        shouldLog && console.log(`validateFulfillmentData method has been called.\n`);
+        shouldLog && logData && console.log(`-> Inside validateFulfillmentData method we are getting optionData as: \n`);
+        shouldLog && logData && console.log(optionData);
+        shouldLog && logData && console.log(`-> Inside validateFulfillmentData method we are getting data as: \n`);
+        shouldLog && logData && console.log(data);
+        shouldLog && logData && console.log(`-> Inside validateFulfillmentData method we are getting cart as: \n`);
+        shouldLog && logData && console.log(cart);
 
-            if (optionData.id !== "ncm-fulfillment" && optionData.id !== "ncm-fulfillment-return") {
-                throw new MedusaError(
-                    MedusaError.Types.INVALID_DATA,
-                    "Invalid fulfillment option",
-                    "NCM_INVALID_OPTION"
-                )
-            }
-
-            if (!cart?.shipping_address?.postal_code) {
-                throw new MedusaError(
-                    MedusaError.Types.INVALID_DATA,
-                    "Shipping postal code is required",
-                    "NCM_MISSING_POSTAL_CODE"
-                )
-            }
-
-            return {
-                ...data,
-            }
-        } catch (error) {
-            if (error instanceof MedusaError) {
-                throw error
-            }
+        // Basic fulfillment option validation
+        if (optionData.id !== "ncm-fulfillment" && optionData.id !== "ncm-fulfillment-return") {
             throw new MedusaError(
                 MedusaError.Types.INVALID_DATA,
-                "An error occurred while validating fulfillment data",
-                "NCM_VALIDATION_ERROR",
-                error.message
+                "Invalid fulfillment option",
+                "NCM_INVALID_OPTION"
             )
+        }
+
+        // Postal code validation
+        if (!cart?.shipping_address?.postal_code) {
+            throw new MedusaError(
+                MedusaError.Types.INVALID_DATA,
+                "Shipping postal code is required",
+                "NCM_MISSING_POSTAL_CODE"
+            )
+        }
+
+        // If all validations pass, return the data
+        return {
+            ...data,
         }
     }
 
@@ -93,6 +89,8 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
     ): Promise<boolean> {
         try {
             shouldLog && console.log(`validateOption method has been called.\n`);
+            shouldLog && logData && console.log(`-> Inside validateOption method we are getting data as: \n`);
+            shouldLog && logData && console.log(data);
 
             if (!data.id) {
                 throw new MedusaError(
@@ -121,6 +119,8 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
     ): Promise<boolean> {
         try {
             shouldLog && console.log(`canCalculate method has been called.\n`);
+            shouldLog && logData && console.log(`-> Inside canCalculate method we are getting data as: \n`);
+            shouldLog && logData && console.log(data);
             return true
         } catch (error) {
             throw new MedusaError(
@@ -139,6 +139,12 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
     ): Promise<number> {
         try {
             shouldLog && console.log(`calculatePrice method has been called.\n`);
+            shouldLog && logData && console.log(`-> Inside calculatePrice method we are getting optionData as: \n`);
+            shouldLog && logData && console.log(optionData);
+            shouldLog && logData && console.log(`-> Inside calculatePrice method we are getting data as: \n`);
+            shouldLog && logData && console.log(data);
+            shouldLog && logData && console.log(`-> Inside calculatePrice method we are getting cart as: \n`);
+            shouldLog && logData && console.log(cart);
 
             const isReturn = optionData.id === "ncm-fulfillment-return";
             const destination = isReturn
@@ -207,6 +213,14 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
         fulfillment: Fulfillment
     ) {
         shouldLog && console.log(`createFulfillment method has been called.\n`);
+        shouldLog && logData && console.log(`-> Inside createFulfillment method we are getting data as: \n`);
+        shouldLog && logData && console.log(data);
+        shouldLog && logData && console.log(`-> Inside createFulfillment method we are getting items as: \n`);
+        shouldLog && logData && console.log(items);
+        shouldLog && logData && console.log(`-> Inside createFulfillment method we are getting order as: \n`);
+        shouldLog && logData && console.log(order);
+        shouldLog && logData && console.log(`-> Inside createFulfillment method we are getting fulfillment as: \n`);
+        shouldLog && logData && console.log(fulfillment);
 
         try {
             const baseUrl = process.env.NCM_BASE_URL;
@@ -297,6 +311,9 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
     ): Promise<any> {
         try {
             shouldLog && console.log(`cancelFulfillment method has been called.\n`);
+            shouldLog && logData && console.log(`-> Inside cancelFulfillment method we are getting fulfillment as: \n`);
+            shouldLog && logData && console.log(fulfillment);
+
             throw new MedusaError(
                 MedusaError.Types.NOT_ALLOWED,
                 "NCM fulfillments cannot be cancelled through the API",
@@ -320,8 +337,21 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
     ): Promise<Record<string, unknown>> {
         try {
             shouldLog && console.log(`createReturn method has been called.\n`);
+            shouldLog && logData && console.log(`-> Inside createReturn method we are getting returnOrder as: \n`);
+            shouldLog && logData && console.log(returnOrder);
 
-            const order = await this.orderService_.retrieve(returnOrder.order_id, {
+            // Get order_id either directly or from swap
+            const orderId = returnOrder.order_id || returnOrder.swap?.order_id;
+
+            if (!orderId) {
+                throw new MedusaError(
+                    MedusaError.Types.NOT_FOUND,
+                    "Order ID not found in return or swap",
+                    "NCM_ORDER_NOT_FOUND"
+                )
+            }
+
+            const order = await this.orderService_.retrieve(orderId, {
                 relations: ['fulfillments'],
             });
 
@@ -397,6 +427,9 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
     ): Promise<any> {
         try {
             shouldLog && console.log(`getFulfillmentDocuments method has been called.\n`);
+            shouldLog && logData && console.log(`-> Inside getFulfillmentDocuments method we are getting data as: \n`);
+            shouldLog && logData && console.log(data);
+
             throw new MedusaError(
                 MedusaError.Types.NOT_ALLOWED,
                 "Document retrieval is not supported by NCM",
@@ -420,6 +453,9 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
     ): Promise<any> {
         try {
             shouldLog && console.log(`getReturnDocuments method has been called.\n`);
+            shouldLog && logData && console.log(`-> Inside getReturnDocuments method we are getting data as: \n`);
+            shouldLog && logData && console.log(data);
+
             throw new MedusaError(
                 MedusaError.Types.NOT_ALLOWED,
                 "Return document retrieval is not supported by NCM",
@@ -443,6 +479,9 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
     ): Promise<any> {
         try {
             shouldLog && console.log(`getShipmentDocuments method has been called.\n`);
+            shouldLog && logData && console.log(`-> Inside getShipmentDocuments method we are getting data as: \n`);
+            shouldLog && logData && console.log(data);
+
             throw new MedusaError(
                 MedusaError.Types.NOT_ALLOWED, "Shipment document retrieval is not supported by NCM",
                 "NCM_SHIPMENT_DOCUMENTS_NOT_SUPPORTED"
@@ -466,7 +505,10 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
     ): Promise<any> {
         try {
             shouldLog && console.log(`retrieveDocuments method has been called.\n`);
-            shouldLog && logData && console.log(`Document type:`, documentType);
+            shouldLog && logData && console.log(`-> Inside retrieveDocuments method we are getting fulfillmentData as: \n`);
+            shouldLog && logData && console.log(fulfillmentData);
+            shouldLog && logData && console.log(`-> Inside retrieveDocuments method we are getting documentType as: \n`);
+            shouldLog && logData && console.log(documentType);
 
             throw new MedusaError(
                 MedusaError.Types.NOT_ALLOWED,
