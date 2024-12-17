@@ -69,14 +69,14 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
             )
         }
 
-        // Postal code validation
-        if (!cart?.shipping_address?.postal_code) {
-            throw new MedusaError(
-                MedusaError.Types.INVALID_DATA,
-                "Shipping postal code is required",
-                "NCM_MISSING_POSTAL_CODE"
-            )
-        }
+        // // Postal code validation
+        // if (!cart?.shipping_address?.postal_code) {
+        //     throw new MedusaError(
+        //         MedusaError.Types.INVALID_DATA,
+        //         "Shipping postal code is required",
+        //         "NCM_MISSING_POSTAL_CODE"
+        //     )
+        // }
 
         // If all validations pass, return the data
         return {
