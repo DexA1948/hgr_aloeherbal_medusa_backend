@@ -1,4 +1,4 @@
-// File: src\services\ncm-fullfillment.ts
+// File: src/services/ncm-fullfillment.ts
 
 import {
     AbstractFulfillmentService,
@@ -38,6 +38,9 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
                 },
             ]
         } catch (error) {
+            shouldLog && logData && console.log(`-> Inside getFulfillmentOptions method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
             throw new MedusaError(
                 MedusaError.Types.UNEXPECTED_STATE,
                 "An error occurred while getting fulfillment options",
@@ -52,35 +55,53 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
         data: Record<string, unknown>,
         cart: Cart
     ): Promise<Record<string, unknown>> {
-        shouldLog && console.log(`validateFulfillmentData method has been called.\n`);
-        shouldLog && logData && console.log(`-> Inside validateFulfillmentData method we are getting optionData as: \n`);
-        shouldLog && logData && console.log(optionData);
-        shouldLog && logData && console.log(`-> Inside validateFulfillmentData method we are getting data as: \n`);
-        shouldLog && logData && console.log(data);
-        shouldLog && logData && console.log(`-> Inside validateFulfillmentData method we are getting cart as: \n`);
-        shouldLog && logData && console.log(cart);
+        try {
+            shouldLog && console.log(`validateFulfillmentData method has been called.\n`);
+            shouldLog && logData && console.log(`-> Inside validateFulfillmentData method we are getting optionData as: \n`);
+            shouldLog && logData && console.log(optionData);
+            shouldLog && logData && console.log(`-> Inside validateFulfillmentData method we are getting data as: \n`);
+            shouldLog && logData && console.log(data);
+            shouldLog && logData && console.log(`-> Inside validateFulfillmentData method we are getting cart as: \n`);
+            shouldLog && logData && console.log(cart);
 
-        // Basic fulfillment option validation
-        if (optionData.id !== "ncm-fulfillment" && optionData.id !== "ncm-fulfillment-return") {
+            // Basic fulfillment option validation
+            if (optionData.id !== "ncm-fulfillment" && optionData.id !== "ncm-fulfillment-return") {
+                throw new MedusaError(
+                    MedusaError.Types.INVALID_DATA,
+                    "Invalid fulfillment option",
+                    "NCM_INVALID_OPTION"
+                )
+            }
+
+            // Postal code validation - throw error directly, don't wrap it
+            // if (optionData.id === "ncm-fulfillment" && !cart?.shipping_address?.postal_code) {
+            //     throw new MedusaError(
+            //         MedusaError.Types.INVALID_DATA,
+            //         "Shipping postal code is required",
+            //         "NCM_MISSING_POSTAL_CODE"
+            //     )
+            // }
+
+            // If all validations pass, return the data
+            return {
+                ...data,
+            }
+
+        } catch (error) {
+            shouldLog && logData && console.log(`-> Inside validateFulfillmentData method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
+            // If it has MedusaError properties, treat it as a MedusaError
+            if (error.type && error.code && error.date) {
+                throw error
+            }
+
             throw new MedusaError(
-                MedusaError.Types.INVALID_DATA,
-                "Invalid fulfillment option",
-                "NCM_INVALID_OPTION"
+                MedusaError.Types.UNEXPECTED_STATE,
+                "An unexpected error occurred during validation",
+                "NCM_VALIDATION_ERROR",
+                error.message
             )
-        }
-
-        // // Postal code validation
-        // if (!cart?.shipping_address?.postal_code) {
-        //     throw new MedusaError(
-        //         MedusaError.Types.INVALID_DATA,
-        //         "Shipping postal code is required",
-        //         "NCM_MISSING_POSTAL_CODE"
-        //     )
-        // }
-
-        // If all validations pass, return the data
-        return {
-            ...data,
         }
     }
 
@@ -102,9 +123,14 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
 
             return data.id === "ncm-fulfillment" || data.id === "ncm-fulfillment-return"
         } catch (error) {
-            if (error instanceof MedusaError) {
+            shouldLog && logData && console.log(`-> Inside validateOption method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
+            // If it has MedusaError properties, treat it as a MedusaError
+            if (error.type && error.code && error.date) {
                 throw error
             }
+
             throw new MedusaError(
                 MedusaError.Types.INVALID_DATA,
                 "An error occurred while validating option",
@@ -123,6 +149,14 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
             shouldLog && logData && console.log(data);
             return true
         } catch (error) {
+            shouldLog && logData && console.log(`-> Inside canCalculate method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
+            // If it has MedusaError properties, treat it as a MedusaError
+            if (error.type && error.code && error.date) {
+                throw error
+            }
+
             throw new MedusaError(
                 MedusaError.Types.UNEXPECTED_STATE,
                 "An error occurred in rate calculation check",
@@ -194,9 +228,14 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
             return rateData.charge * 100 || 30000;
 
         } catch (error) {
-            if (error instanceof MedusaError) {
+            shouldLog && logData && console.log(`-> Inside calculatePrice method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
+            // If it has MedusaError properties, treat it as a MedusaError
+            if (error.type && error.code && error.date) {
                 throw error
             }
+
             throw new MedusaError(
                 MedusaError.Types.UNEXPECTED_STATE,
                 "An error occurred while calculating price",
@@ -295,9 +334,14 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
             };
 
         } catch (error) {
-            if (error instanceof MedusaError) {
+            shouldLog && logData && console.log(`-> Inside createFulfillment method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
+            // If it has MedusaError properties, treat it as a MedusaError
+            if (error.type && error.code && error.date) {
                 throw error
             }
+
             throw new MedusaError(
                 MedusaError.Types.UNEXPECTED_STATE,
                 error.message || "An unknown error occurred while creating NCM fulfillment",
@@ -320,9 +364,14 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
                 "NCM_CANCEL_NOT_SUPPORTED"
             )
         } catch (error) {
-            if (error instanceof MedusaError) {
+            shouldLog && logData && console.log(`-> Inside cancelFulfillment method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
+            // If it has MedusaError properties, treat it as a MedusaError
+            if (error.type && error.code && error.date) {
                 throw error
             }
+
             throw new MedusaError(
                 MedusaError.Types.UNEXPECTED_STATE,
                 "An error occurred while canceling fulfillment",
@@ -398,8 +447,7 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
 
             if (!response.ok) {
                 throw new MedusaError(
-                    MedusaError.Types.UNEXPECTED_STATE,
-                    "Failed to create NCM return comment",
+                    MedusaError.Types.UNEXPECTED_STATE, "Failed to create NCM return comment",
                     "NCM_RETURN_COMMENT_ERROR"
                 )
             }
@@ -410,9 +458,14 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
             };
 
         } catch (error) {
-            if (error instanceof MedusaError) {
+            shouldLog && logData && console.log(`-> Inside createReturn method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
+            // If it has MedusaError properties, treat it as a MedusaError
+            if (error.type && error.code && error.date) {
                 throw error
             }
+
             throw new MedusaError(
                 MedusaError.Types.UNEXPECTED_STATE,
                 "An error occurred while creating return",
@@ -436,9 +489,14 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
                 "NCM_DOCUMENTS_NOT_SUPPORTED"
             )
         } catch (error) {
-            if (error instanceof MedusaError) {
+            shouldLog && logData && console.log(`-> Inside getFulfillmentDocuments method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
+            // If it has MedusaError properties, treat it as a MedusaError
+            if (error.type && error.code && error.date) {
                 throw error
             }
+
             throw new MedusaError(
                 MedusaError.Types.UNEXPECTED_STATE,
                 "An error occurred while getting fulfillment documents",
@@ -462,9 +520,14 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
                 "NCM_RETURN_DOCUMENTS_NOT_SUPPORTED"
             )
         } catch (error) {
-            if (error instanceof MedusaError) {
+            shouldLog && logData && console.log(`-> Inside getReturnDocuments method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
+            // If it has MedusaError properties, treat it as a MedusaError
+            if (error.type && error.code && error.date) {
                 throw error
             }
+
             throw new MedusaError(
                 MedusaError.Types.UNEXPECTED_STATE,
                 "An error occurred while getting return documents",
@@ -483,13 +546,19 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
             shouldLog && logData && console.log(data);
 
             throw new MedusaError(
-                MedusaError.Types.NOT_ALLOWED, "Shipment document retrieval is not supported by NCM",
+                MedusaError.Types.NOT_ALLOWED,
+                "Shipment document retrieval is not supported by NCM",
                 "NCM_SHIPMENT_DOCUMENTS_NOT_SUPPORTED"
             )
         } catch (error) {
-            if (error instanceof MedusaError) {
+            shouldLog && logData && console.log(`-> Inside getShipmentDocuments method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
+            // If it has MedusaError properties, treat it as a MedusaError
+            if (error.type && error.code && error.date) {
                 throw error
             }
+
             throw new MedusaError(
                 MedusaError.Types.UNEXPECTED_STATE,
                 "An error occurred while getting shipment documents",
@@ -516,9 +585,14 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
                 "NCM_RETRIEVE_DOCUMENTS_NOT_SUPPORTED"
             )
         } catch (error) {
-            if (error instanceof MedusaError) {
+            shouldLog && logData && console.log(`-> Inside retrieveDocuments method we are catching error as: \n`);
+            shouldLog && logData && console.log(error);
+
+            // If it has MedusaError properties, treat it as a MedusaError
+            if (error.type && error.code && error.date) {
                 throw error
             }
+
             throw new MedusaError(
                 MedusaError.Types.UNEXPECTED_STATE,
                 "An error occurred while retrieving documents",
