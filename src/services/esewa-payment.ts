@@ -307,11 +307,13 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
         shouldLog && console.log(`-> Inside EsewaPaymentService's deletePayment, paymentSessionData receieved is: \n`);
         shouldLog && console.log(paymentSessionData);
 
-        throw new MedusaError(
-            MedusaError.Types.NOT_ALLOWED,
-            "eSewa payments cannot be deleted through the API",
-            "ESEWA_DELETE_NOT_SUPPORTED"
-        )
+        // throw new MedusaError(
+        //     MedusaError.Types.NOT_ALLOWED,
+        //     "eSewa payments cannot be deleted through the API",
+        //     "ESEWA_DELETE_NOT_SUPPORTED"
+        // )
+
+        return {}
     }
 
     async getPaymentStatus(
@@ -359,7 +361,7 @@ class EsewaPaymentService extends AbstractPaymentProcessor {
             }
         }
     }
-    
+
     async retrievePayment(
         paymentSessionData: Record<string, unknown>
     ): Promise<Record<string, unknown>> {
