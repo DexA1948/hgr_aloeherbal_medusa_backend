@@ -16,7 +16,7 @@ class NCMService extends TransactionBaseService {
 
     constructor(container) {
         super(container)
-        this.NCM_API_URL = process.env.NCM_API_URL || "https://demo.nepalcanmove.com/api/v1"
+        this.NCM_API_URL = process.env.NCM_API_URL || "https://portal.nepalcanmove.com/api/v1"
         this.NCM_API_KEY = process.env.NCM_API_KEY || ""
     }
 

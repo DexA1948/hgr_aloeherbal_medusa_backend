@@ -42,6 +42,7 @@
     "medusa-interfaces": "latest",
     "medusa-payment-manual": "latest",
     "medusa-payment-stripe": "latest",
+    "medusa-plugin-algolia": "^0.2.21",
     "medusa-plugin-blog": "^0.1.0",
     "medusa-plugin-sendgrid": "^1.3.13",
     "nodemailer": "^6.9.14",
