@@ -308,6 +308,10 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
                 instruction: order.shipping_address.address_2 || ''
             };
 
+            shouldLog && logData && console.log(`-> Inside createFulfillment method we are creating requestBody as: \n`);
+            console.log('Request body: ', requestBody);
+            // console.log(requestBody);
+
             const response = await fetch(`${baseUrl}/api/v1/order/create`, {
                 method: 'POST',
                 headers: {
