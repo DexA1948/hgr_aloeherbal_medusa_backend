@@ -291,23 +291,49 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
                 .filter(Boolean)
                 .join(', ');
 
-            // Function to get abbreviated product name (2 letters from each word)
-            const getProductAbbreviation = (title: string): string => {
-                return title
-                    .split(' ')
-                    .map(word => word.slice(0, 2))
-                    .map(letters => letters.charAt(0).toUpperCase() + letters.charAt(1).toLowerCase())
-                    .join('');
+            // Function to create package description
+            const createPackageDescription = (items: LineItem[]): string => {
+                // Helper function to abbreviate product names
+                const getProductAbbreviation = (title: string): string => {
+                    return title
+                        .split(' ')
+                        .map(word => word.slice(0, 2))
+                        .map(letters => letters.charAt(0).toUpperCase() + letters.charAt(1).toLowerCase())
+                        .join('');
+                };
+
+                // Example: items = [
+                //   { title: "Face Wash", quantity: 1 },
+                //   { title: "Sunscreen", quantity: 2 }
+                // ]
+
+                // First attempt: Create description with full titles
+                // Result: "Face Wash x1, Sunscreen x2"
+                const fullTitleDescription = items
+                    .map(item => `${item.title} x${item.quantity}`)
+                    .join(', ');
+
+                // If full titles version is under 100 chars, use it
+                if (fullTitleDescription.length <= 100) {
+                    return fullTitleDescription;
+                }
+
+                // If full titles too long, create abbreviated version
+                // Example: turns "Face Wash" into "FaWa", "Sunscreen" into "Su"
+                // Result: "FaWa x1, Su x2"
+                const abbreviatedDescription = items
+                    .map(item => `${getProductAbbreviation(item.title)} x${item.quantity}`)
+                    .join(', ');
+
+                // If even abbreviated version is too long, truncate it
+                if (abbreviatedDescription.length > 100) {
+                    return abbreviatedDescription.slice(0, 90) + '... more';
+                }
+
+                return abbreviatedDescription;
             };
 
-            // Create abbreviated package description
-            const fullPackageDescription = items
-                .map(item => `${getProductAbbreviation(item.title)} x${item.quantity}`)
-                .join(', ');
-
-            const packageDescription = fullPackageDescription.length > 100
-                ? fullPackageDescription.slice(0, 90) + '... more'
-                : fullPackageDescription;
+            const packageDescription = createPackageDescription(items);
 
             // Function to clean and validate phone numbers
             const cleanAndValidatePhone = (phone: string, fieldName: string): string => {
