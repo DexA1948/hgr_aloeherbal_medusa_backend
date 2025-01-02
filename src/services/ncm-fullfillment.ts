@@ -291,13 +291,46 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
                 .filter(Boolean)
                 .join(', ');
 
-            const packageDescription = items
-                .map(item => `${item.title} x${item.quantity}`)
+            // Function to get abbreviated product name (2 letters from each word)
+            const getProductAbbreviation = (title: string): string => {
+                return title
+                    .split(' ')
+                    .map(word => word.slice(0, 2))
+                    .map(letters => letters.charAt(0).toUpperCase() + letters.charAt(1).toLowerCase())
+                    .join('');
+            };
+
+            // Create abbreviated package description
+            const fullPackageDescription = items
+                .map(item => `${getProductAbbreviation(item.title)} x${item.quantity}`)
                 .join(', ');
+
+            const packageDescription = fullPackageDescription.length > 100
+                ? fullPackageDescription.slice(0, 90) + '... more'
+                : fullPackageDescription;
+
+            // Function to clean and validate phone numbers
+            const cleanAndValidatePhone = (phone: string, fieldName: string): string => {
+                if (!phone) return '';
+                const cleaned = phone.replace(/^\+977-?/, '');
+
+                // Check if the cleaned number is exactly 10 digits
+                if (cleaned !== '' && !/^\d{10}$/.test(cleaned)) {
+                    throw new MedusaError(
+                        MedusaError.Types.INVALID_DATA,
+                        `Invalid ${fieldName}: must be exactly 10 digits after removing +977 prefix`,
+                        'NCM_INVALID_PHONE'
+                    );
+                }
+
+                return cleaned;
+            };
+
+            const mainPhone = cleanAndValidatePhone(order.shipping_address.phone, 'phone number');
 
             const requestBody = {
                 name: order.shipping_address.first_name + ' ' + order.shipping_address.last_name,
-                phone: order.shipping_address.phone,
+                phone: mainPhone,
                 phone2: '',
                 cod_charge: order.payments[0].provider_id == "manual" ? order.total / 100 : '0',
                 address: fullAddress,
@@ -310,7 +343,6 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
 
             shouldLog && logData && console.log(`-> Inside createFulfillment method we are creating requestBody as: \n`);
             console.log('Request body: ', requestBody);
-            // console.log(requestBody);
 
             const response = await fetch(`${baseUrl}/api/v1/order/create`, {
                 method: 'POST',

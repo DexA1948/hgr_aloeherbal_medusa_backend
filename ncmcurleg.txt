@@ -1,0 +1,15 @@
+curl --location --request POST 'https://demo.nepalcanmove.com/api/v1/order/create' 
+--header 'Authorization: Token 009d25035b2da1b4533b0f2cbfe1877d510aaa7e'
+--header 'Content-Type: application/json' 
+--data-raw '{
+  "name": "Saru Shrestha",
+  "phone": "9847367657",
+  "phone2": "",
+  "cod_charge": "3940",
+  "address": "KALANKI, kathmandu metropolitan city, KATHMANDU, R05 - BAGMATI, KALANKI",
+  "fbranch": "BIRATNAGAR",
+  "branch": "KALANKI",
+  "package": "Moisturizer cream x1, Face Cleanser x1, Salicylic Acid Toner x1, Oil Cleanser x1, Vitamin C Serum x1, Sunscreen x1",
+  "vref_id": "0MNNFAP",
+  "instruction": ""
+}'
