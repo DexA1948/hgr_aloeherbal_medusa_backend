@@ -73,7 +73,7 @@ const CustomerExportWidget = () => {
         <Container>
             <div className="flex items-center justify-between">
                 <Text className="text-ui-fg-subtle">
-                    Export customer data with filters:
+                    Export customers with additional fields and date filters:
                 </Text>
                 <Button
                     variant="secondary"

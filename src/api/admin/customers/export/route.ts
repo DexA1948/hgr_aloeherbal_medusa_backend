@@ -46,7 +46,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
             // Only add address/group data if relations were requested
             if (query.has_account === "true") {
-                data[ "Has Account"] = getFullAddress(customer.has_account)
+                data["Has Account"] = customer.has_account
             }
 
             if (query.billing_address === "true") {
