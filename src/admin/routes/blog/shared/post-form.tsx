@@ -23,6 +23,7 @@ import type {
   PostRequest
 } from "../../../types/blog"
 import { BellAlertSolid } from "@medusajs/icons"
+import RichTextEditor from "../../components/rich-text-editor"
 
 const PostForm = ({ initialData, onSuccess, notify }: PostFormProps) => {
   const navigate = useNavigate()
@@ -470,7 +471,7 @@ const PostForm = ({ initialData, onSuccess, notify }: PostFormProps) => {
         </div>
 
         <div>
-          <Label htmlFor="content">Content</Label>
+          {/* <Label htmlFor="content">Content</Label>
           <Textarea
             id="content"
             value={formData.content}
@@ -479,6 +480,14 @@ const PostForm = ({ initialData, onSuccess, notify }: PostFormProps) => {
               content: e.target.value
             })}
             rows={10}
+          /> */}
+          <Label htmlFor="content">Content</Label>
+          <RichTextEditor
+            content={formData.content || ""}
+            onChange={(content) => setFormData({
+              ...formData,
+              content: content
+            })}
           />
         </div>
 
