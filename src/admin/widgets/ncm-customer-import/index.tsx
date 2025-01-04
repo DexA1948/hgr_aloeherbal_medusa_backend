@@ -1,4 +1,4 @@
-// src/admin/widgets/customer-import-widget.tsx
+// src/admin/widgets/ncm-customer-import/index.tsx
 
 import React, { useCallback, useState } from "react"
 import {
@@ -13,11 +13,11 @@ import {
     Container,
     Text,
     FocusModal,
-    Badge,
 } from "@medusajs/ui"
 import { CloudArrowUp, Trash, DocumentText, ArrowDownTray, InformationCircle, CheckCircleSolid } from "@medusajs/icons"
-import { downloadCustomerImportTemplate } from "./download-template"
-import { ImportAnalysis, ProcessingError } from "./types"
+import { downloadNCMCustomerImportTemplate } from "./download-template"
+import { ImportAnalysis, ProcessingError, NCMCustomerImportCsvRow } from "./types"
+import { transformToStandardFormat } from "./utils"
 import Papa from "papaparse"
 import clsx from "clsx"
 
@@ -66,7 +66,7 @@ const FileSummary = ({
     )
 }
 
-const CustomerImportWidget = () => {
+const NCMCustomerImportWidget = () => {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [fileKey, setFileKey] = useState<string>()
     const [batchJobId, setBatchJobId] = useState<string>()
@@ -106,14 +106,22 @@ const CustomerImportWidget = () => {
                 header: true,
                 skipEmptyLines: true,
                 complete: (results) => {
-                    const rows = results.data
+                    const rows = results.data as NCMCustomerImportCsvRow[]
                     const updates = rows.filter(row => row["Customer Id"]).length
                     const creates = rows.length - updates
                     const errors: string[] = []
 
-                    // Basic validation
-                    if (!results.meta.fields?.includes("Email")) {
-                        errors.push("CSV must include an Email column")
+                    // Required fields validation
+                    const requiredFields = ["Email", "First Name", "Last Name", "Phone",
+                        "Shipping Country Code", "Region", "District", "Municipality",
+                        "NCM Area", "NCM Postal Code"]
+
+                    const missingFields = requiredFields.filter(
+                        field => !results.meta.fields?.includes(field)
+                    )
+
+                    if (missingFields.length > 0) {
+                        errors.push(`Missing required columns: ${missingFields.join(", ")}`)
                     }
 
                     if (results.errors.length > 0) {
@@ -126,9 +134,7 @@ const CustomerImportWidget = () => {
                         errors
                     })
                 },
-                error: (error) => {
-                    reject(new Error(`Failed to parse CSV: ${error}`))
-                }
+                error: (error) => reject(new Error(`Failed to parse CSV: ${error}`))
             })
         })
     }, [])
@@ -150,8 +156,24 @@ const CustomerImportWidget = () => {
                 return
             }
 
-            // If CSV is valid, proceed with upload
-            const res = await fileUploader.mutateAsync(file as any)
+            // Transform the CSV data
+            const transformedCsv = await new Promise((resolve, reject) => {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        const transformedRows = (results.data as NCMCustomerImportCsvRow[])
+                            .map(transformToStandardFormat)
+
+                        const csv = Papa.unparse(transformedRows)
+                        resolve(new Blob([csv], { type: 'text/csv' }))
+                    },
+                    error: (error) => reject(error)
+                })
+            })
+
+            // Upload transformed file
+            const res = await fileUploader.mutateAsync(transformedCsv as any)
             const _fileKey = res.uploads[0].key
             setFileKey(_fileKey)
 
@@ -219,14 +241,14 @@ const CustomerImportWidget = () => {
         <Container>
             <div className="flex items-center justify-between mb-4">
                 <Text className="text-ui-fg-subtle">
-                    Import customer data from a CSV file:
+                    Import customer data in NCM format from a CSV file:
                 </Text>
                 <Button
                     variant="secondary"
                     onClick={() => setIsModalOpen(true)}
                 >
                     <CloudArrowUp className="mr-2" />
-                    Import Customers
+                    Import NCM Format
                 </Button>
             </div>
 
@@ -329,7 +351,7 @@ const CustomerImportWidget = () => {
                                             <Button
                                                 variant="secondary"
                                                 size="small"
-                                                onClick={downloadCustomerImportTemplate}
+                                                onClick={downloadNCMCustomerImportTemplate}
                                             >
                                                 <ArrowDownTray className="text-grey-40" />
                                             </Button>
@@ -369,4 +391,4 @@ export const config = {
     zone: "customer.list.before",
 }
 
-export default CustomerImportWidget
+export default NCMCustomerImportWidget
