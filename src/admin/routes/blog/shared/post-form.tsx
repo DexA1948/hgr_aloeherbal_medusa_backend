@@ -23,7 +23,9 @@ import type {
   PostRequest
 } from "../../../types/blog"
 import { BellAlertSolid } from "@medusajs/icons"
-import RichTextEditor from "../../components/rich-text-editor"
+// Add these imports at the top
+import RichTextEditor from "../../../components/rich-text-editor"
+import FeaturedImageUploader from "../../../components/common/featured-image-uploader"
 
 const PostForm = ({ initialData, onSuccess, notify }: PostFormProps) => {
   const navigate = useNavigate()
@@ -471,16 +473,17 @@ const PostForm = ({ initialData, onSuccess, notify }: PostFormProps) => {
         </div>
 
         <div>
-          {/* <Label htmlFor="content">Content</Label>
-          <Textarea
-            id="content"
-            value={formData.content}
-            onChange={(e) => setFormData({
-              ...formData,
-              content: e.target.value
-            })}
-            rows={10}
-          /> */}
+          <FeaturedImageUploader
+            value={formData.metadata?.featured_image || ""}
+            onChange={(url) => setMetadataEntries([
+              ...metadataEntries,
+              { key: "featured_image", value: url }
+            ])}
+            onRemove={() => handleRemoveMetadata("featured_image")}
+          />
+        </div>
+
+        <div>
           <Label htmlFor="content">Content</Label>
           <RichTextEditor
             content={formData.content || ""}
@@ -488,6 +491,7 @@ const PostForm = ({ initialData, onSuccess, notify }: PostFormProps) => {
               ...formData,
               content: content
             })}
+            maxLength={50000}
           />
         </div>
 
