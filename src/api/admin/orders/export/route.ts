@@ -39,6 +39,41 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     }
   }
 
+  // Add status filters
+  if (query.status) {
+    filterableFields.status = Array.isArray(query.status)
+      ? query.status
+      : [query.status]
+  }
+
+  // Add payment status filters
+  if (query.payment_status) {
+    filterableFields.payment_status = Array.isArray(query.payment_status)
+      ? query.payment_status
+      : [query.payment_status]
+  }
+
+  // Add fulfillment status filters
+  if (query.fulfillment_status) {
+    filterableFields.fulfillment_status = Array.isArray(query.fulfillment_status)
+      ? query.fulfillment_status
+      : [query.fulfillment_status]
+  }
+
+  // Add region filters
+  if (query.region_id) {
+    filterableFields.region_id = Array.isArray(query.region_id)
+      ? query.region_id
+      : [query.region_id]
+  }
+
+  // Add sales channel filters
+  if (query.sales_channel_id) {
+    filterableFields.sales_channel_id = Array.isArray(query.sales_channel_id)
+      ? query.sales_channel_id
+      : [query.sales_channel_id]
+  }
+
   try {
     const orders = await orderService.list(filterableFields, {
       relations,
@@ -86,6 +121,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       if (query.salesChannelId) data["Sales Channel"] = order.sales_channel?.name || "N/A"
       if (query.regionName) data["Region"] = order.region?.name || "N/A"
       if (query.cartId) data["Cart ID"] = order.cart_id || "N/A"
+      if (query.displayId) data["Order Display ID"] = order.display_id || "N/A"
 
       return data
     })
