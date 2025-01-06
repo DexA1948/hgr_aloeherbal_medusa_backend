@@ -31,6 +31,14 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     }
   }
 
+  // Add display ID range filter
+  if (query.display_id_from && query.display_id_to) {
+    filterableFields.display_id = {
+      gte: parseInt(query.display_id_from as string),
+      lte: parseInt(query.display_id_to as string)
+    }
+  }
+
   try {
     const orders = await orderService.list(filterableFields, {
       relations,

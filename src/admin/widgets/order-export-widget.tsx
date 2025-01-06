@@ -8,7 +8,8 @@ import {
     Label,
     Checkbox,
     DatePicker,
-    clx
+    clx,
+    Input
 } from "@medusajs/ui"
 import { ArrowUpTray } from "@medusajs/icons"
 
@@ -51,7 +52,45 @@ const OrderExportWidget = () => {
     const [startDate, setStartDate] = useState<Date | null>(null)
     const [endDate, setEndDate] = useState<Date | null>(null)
 
+    const [displayIdRange, setDisplayIdRange] = useState({
+        start: "",
+        end: ""
+    })
+    const [rangeError, setRangeError] = useState<string>("")
+
+    // Validate range inputs
+    const validateRange = (): boolean => {
+        const start = parseInt(displayIdRange.start)
+        const end = parseInt(displayIdRange.end)
+
+        if (displayIdRange.start && displayIdRange.end) {
+            if (isNaN(start) || isNaN(end)) {
+                setRangeError("Please enter valid numbers")
+                return false
+            }
+            if (start < 1) {
+                setRangeError("Start ID must be greater than 0")
+                return false
+            }
+            if (end < start) {
+                setRangeError("End ID must be greater than Start ID")
+                return false
+            }
+            if (end - start > 1000) {
+                setRangeError("Range cannot exceed 1000 orders")
+                return false
+            }
+            setRangeError("")
+            return true
+        }
+        return true // If either field is empty, consider it valid (not using range filter)
+    }
+
     const handleExport = async () => {
+        if (!validateRange()) {
+            return
+        }
+
         setIsExporting(true)
         try {
             const baseUrl = process.env.MEDUSA_ADMIN_BACKEND_URL || "/api"
@@ -72,6 +111,12 @@ const OrderExportWidget = () => {
                 const end = new Date(endDate)
                 end.setHours(23, 59, 59, 999)
                 searchParams.append("end_date", end.toISOString())
+            }
+
+            // Add display ID range if both values are provided
+            if (displayIdRange.start && displayIdRange.end) {
+                searchParams.append("display_id_from", displayIdRange.start)
+                searchParams.append("display_id_to", displayIdRange.end)
             }
 
             window.location.href = `${baseUrl}/admin/orders/export?${searchParams.toString()}`
@@ -143,6 +188,51 @@ const OrderExportWidget = () => {
                                         </div>
                                     ))}
                                 </div>
+                            </div>
+
+                            {/* Display ID Range Section */}
+                            <div className="flex flex-col gap-y-4">
+                                <Text size="large" className="font-semibold">
+                                    Display ID Range
+                                </Text>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-y-2">
+                                        <Label htmlFor="start-id">Start ID</Label>
+                                        <Input
+                                            id="start-id"
+                                            type="number"
+                                            min="1"
+                                            placeholder="e.g. 1"
+                                            value={displayIdRange.start}
+                                            onChange={(e) => setDisplayIdRange(prev => ({
+                                                ...prev,
+                                                start: e.target.value
+                                            }))}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-y-2">
+                                        <Label htmlFor="end-id">End ID</Label>
+                                        <Input
+                                            id="end-id"
+                                            type="number"
+                                            min="1"
+                                            placeholder="e.g. 100"
+                                            value={displayIdRange.end}
+                                            onChange={(e) => setDisplayIdRange(prev => ({
+                                                ...prev,
+                                                end: e.target.value
+                                            }))}
+                                        />
+                                    </div>
+                                </div>
+                                {rangeError && (
+                                    <Text className="text-ui-fg-error text-sm">
+                                        {rangeError}
+                                    </Text>
+                                )}
+                                <Text className="text-ui-fg-subtle text-sm">
+                                    Leave both fields empty to export without ID range filtering. Maximum range: 1000 orders.
+                                </Text>
                             </div>
 
                             {/* Date Range Section */}
