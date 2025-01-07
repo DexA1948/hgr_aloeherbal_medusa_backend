@@ -114,7 +114,6 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
         "Customer Name": `${order.shipping_address?.first_name || ""} ${order.shipping_address?.last_name || ""}`.trim(),
         "Shipping Address": getFullAddress(order.shipping_address),
         "Contact": order.shipping_address?.phone || "",
-        "Products": getProductsList(),
         "Total Amount": `${(order.total / 100).toFixed(2)} ${order.currency_code.toUpperCase()}`,
         "Payment Method": order.payments?.[0]?.provider_id || "N/A",
         "Order Status": order.status,
@@ -129,7 +128,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       if (query.regionName) data["Region"] = order.region?.name || "N/A"
       if (query.cartId) data["Cart ID"] = order.cart_id || "N/A"
       if (query.displayId) data["Order Display ID"] = order.display_id || "N/A"
-      if (query.shortCodes) data["Short Codes"] = getVariantSKUs()
+      if (query.shortCodes) data["Product Short Codes"] = getVariantSKUs()
+      if (query.productFullNames) data["Product Full Names"] = getProductsList()
 
       return data
     })

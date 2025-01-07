@@ -322,8 +322,12 @@ class NcmFullfillmentService extends AbstractFulfillmentService {
                 // Example: turns "Face Wash" into "FaWa", "Sunscreen" into "Su"
                 // Result: "FaWa x1, Su x2"
                 const abbreviatedDescription = items
-                    .map(item => `${getProductAbbreviation(item.title)} x${item.quantity}`)
-                    .join(', ');
+                    .map(item =>                   // For each item in the order
+                        item.variant?.sku          // First try to get the variant SKU
+                            ? `${item.variant.sku} x${item.quantity}`     // If SKU exists, use it
+                            : `${getProductAbbreviation(item.title)} x${item.quantity}`  // If no SKU, create abbreviation
+                    )
+                    .join(', ')                   // Join all results with comma and space
 
                 // If even abbreviated version is too long, truncate it
                 if (abbreviatedDescription.length > 100) {
