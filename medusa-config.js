@@ -60,8 +60,9 @@ const plugins = [
     options: {
       api_key: process.env.SENDGRID_API_KEY,
       from: process.env.SENDGRID_FROM,
+      reply_to: process.env.SENDGRID_FROM,
       order_placed_template: process.env.SENDGRID_ORDER_PLACED_ID,
-      gift_card_created_template: process.env.SENDGRID_GIFT_PLACED_ID
+      gift_card_created_template: process.env.SENDGRID_GIFT_CARD_CREATED_ID
     },
   },
 
