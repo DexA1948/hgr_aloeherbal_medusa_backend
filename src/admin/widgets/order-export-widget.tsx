@@ -24,6 +24,7 @@ interface AdditionalFields {
     regionCurrency: boolean
     cartId: boolean
     displayId: boolean
+    shortCodes: boolean
 }
 
 const FIELD_LABELS: Record<keyof AdditionalFields, string> = {
@@ -35,7 +36,8 @@ const FIELD_LABELS: Record<keyof AdditionalFields, string> = {
     regionName: "Region Name",
     regionCurrency: "Region Currency",
     cartId: "Cart ID",
-    displayId: "Display ID"
+    displayId: "Display ID",
+    shortCodes: "Product Short Codes"
 }
 
 // Addition for filters
@@ -92,6 +94,7 @@ const OrderExportWidget = () => {
         regionCurrency: false,
         cartId: false,
         displayId: false,
+        shortCodes: true,
     })
 
     const [startDate, setStartDate] = useState<Date | null>(null)

@@ -95,6 +95,13 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
           .join("; ")
       }
 
+      const getVariantSKUs = (): string => {
+        return order.items
+          .map((item: any) => item.variant?.sku || 'N/A')
+          .filter((sku: string) => sku !== 'N/A')
+          .join("; ")
+      }
+
       // Get NCM fulfillment data if exists
       const ncmFulfillment = order.fulfillments?.find((f: any) =>
         f.provider_id === "ncm-fullfillment")
@@ -122,6 +129,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       if (query.regionName) data["Region"] = order.region?.name || "N/A"
       if (query.cartId) data["Cart ID"] = order.cart_id || "N/A"
       if (query.displayId) data["Order Display ID"] = order.display_id || "N/A"
+      if (query.shortCodes) data["Short Codes"] = getVariantSKUs()
 
       return data
     })
