@@ -33,7 +33,7 @@ export const POST = async (
     // Email to admin
     const adminMailOptions = {
         from: process.env.EMAIL_USER,
-        to: 'devkotadexant@gmail.com',
+        to: 'admin@aloeherbals.com',
         replyTo: email,
         subject: `New Inquiry from ${firstName} ${lastName}`,
         text: `
