@@ -97,8 +97,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
       const getVariantSKUs = (): string => {
         return order.items
-          .map((item: any) => item.variant?.sku || 'N/A')
-          .filter((sku: string) => sku !== 'N/A')
+          .map((item: any) => `${item.variant?.sku || 'N/A'} (x${item.quantity})`)
+          .filter((sku: string) => sku !== 'N/A (x0)')
           .join("; ")
       }
 
