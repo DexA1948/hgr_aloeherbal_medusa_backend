@@ -1,5 +1,5 @@
 // src/admin/routes/shared/job-form.tsx
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
     Input,
     Label,
@@ -8,7 +8,7 @@ import {
     Select,
     Text,
 } from "@medusajs/ui"
-import { useAdminCustomPost } from "medusa-react"
+import { useAdminCustomPost, useAdminCustomQuery } from "medusa-react"
 import { useNavigate } from "react-router-dom"
 import {
     JobFormProps,
@@ -18,6 +18,7 @@ import {
     ExperienceLevel
 } from "../../../types/job"
 import { BellAlertSolid } from "@medusajs/icons"
+import RichTextEditor from "../../../components/rich-text-editor"
 
 const JobForm = ({ initialData, onSuccess, notify }: JobFormProps) => {
     const navigate = useNavigate()
@@ -37,6 +38,56 @@ const JobForm = ({ initialData, onSuccess, notify }: JobFormProps) => {
         metadata: initialData?.metadata || {}
     })
 
+    const [existingHandles, setExistingHandles] = useState<string[]>([])
+    const [handleError, setHandleError] = useState<string>("")
+
+    // Move the query outside the effect
+    const { data: jobsData } = useAdminCustomQuery<{ jobs: Job[] }>(
+        '/admin/jobs',
+        ['jobs']
+    )
+
+    // Update the useEffect to use the query data
+    useEffect(() => {
+        if (jobsData?.jobs) {
+            // Filter out current job's handle when editing
+            const handles = jobsData.jobs
+                .filter(job => initialData ? job.id !== initialData.id : true)
+                .map(job => job.handle)
+            setExistingHandles(handles)
+        }
+    }, [jobsData, initialData])
+
+    // Also update handleTitleChange to be more robust
+    const handleTitleChange = (value: string) => {
+        if (initialData) {
+            // If editing, only update title
+            setFormData(prev => ({
+                ...prev,
+                title: value
+            }))
+        } else {
+            // If creating new job, update both title and handle
+            const newHandle = value.toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/-+/g, '-') // Replace multiple consecutive dashes with a single dash
+                .replace(/^-+|-+$/g, '') // Remove dashes from start and end
+
+            // Check handle uniqueness
+            if (existingHandles.includes(newHandle)) {
+                setHandleError("This handle already exists. Please modify the title.")
+            } else {
+                setHandleError("")
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                title: value,
+                handle: newHandle
+            }))
+        }
+    }
+
     const createJob = useAdminCustomPost<Partial<Job>, Job>(
         "/admin/jobs",
         ["jobs"]
@@ -47,17 +98,18 @@ const JobForm = ({ initialData, onSuccess, notify }: JobFormProps) => {
         ["jobs"]
     )
 
-    const handleTitleChange = (value: string) => {
-        const newHandle = value.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-        setFormData(prev => ({
-            ...prev,
-            title: value,
-            handle: newHandle
-        }))
-    }
-
+    // Update the handleSubmit function to include handle validation
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        // Validation checks for new jobs
+        if (!initialData) {
+            if (existingHandles.includes(formData.handle)) {
+                setHandleError("This handle already exists. Please modify the title.")
+                return
+            }
+        }
+
         setIsSubmitting(true)
 
         const mutation = initialData ? updateJob : createJob
@@ -103,6 +155,12 @@ const JobForm = ({ initialData, onSuccess, notify }: JobFormProps) => {
                         onChange={(e) => handleTitleChange(e.target.value)}
                         required
                     />
+                    {handleError && (
+                        <Text className="text-ui-fg-error text-sm mt-2 flex items-center gap-1">
+                            <BellAlertSolid />
+                            {handleError}
+                        </Text>
+                    )}
                 </div>
 
                 {/* Handle Field */}
@@ -115,7 +173,9 @@ const JobForm = ({ initialData, onSuccess, notify }: JobFormProps) => {
                         className="bg-ui-bg-disabled"
                     />
                     <Text className="text-ui-fg-subtle text-sm mt-1">
-                        Handle is automatically generated from the title
+                        {initialData
+                            ? "Handle cannot be modified after creation"
+                            : "Handle is automatically generated from the title"}
                     </Text>
                 </div>
 
@@ -196,44 +256,39 @@ const JobForm = ({ initialData, onSuccess, notify }: JobFormProps) => {
                 {/* Description Field */}
                 <div>
                     <Label htmlFor="description">Job Description</Label>
-                    <Textarea
-                        id="description"
-                        value={formData.description || ""}
-                        onChange={(e) => setFormData({
+                    <RichTextEditor
+                        content={formData.description || ""}
+                        onChange={(content) => setFormData({
                             ...formData,
-                            description: e.target.value
+                            description: content
                         })}
-                        rows={6}
-                        required
+                        maxLength={50000}
                     />
                 </div>
 
                 {/* Requirements Field */}
                 <div>
                     <Label htmlFor="requirements">Requirements</Label>
-                    <Textarea
-                        id="requirements"
-                        value={formData.requirements || ""}
-                        onChange={(e) => setFormData({
+                    <RichTextEditor
+                        content={formData.requirements || ""}
+                        onChange={(content) => setFormData({
                             ...formData,
-                            requirements: e.target.value
+                            requirements: content
                         })}
-                        rows={6}
-                        required
+                        maxLength={20000}
                     />
                 </div>
 
                 {/* Benefits Field */}
                 <div>
                     <Label htmlFor="benefits">Benefits</Label>
-                    <Textarea
-                        id="benefits"
-                        value={formData.benefits || ""}
-                        onChange={(e) => setFormData({
+                    <RichTextEditor
+                        content={formData.benefits || ""}
+                        onChange={(content) => setFormData({
                             ...formData,
-                            benefits: e.target.value
+                            benefits: content
                         })}
-                        rows={4}
+                        maxLength={20000}
                     />
                 </div>
 

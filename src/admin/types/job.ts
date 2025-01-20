@@ -20,6 +20,7 @@ export enum ExperienceLevel {
     EXECUTIVE = "executive"
 }
 
+// src/admin/types/job.ts
 export interface Job {
     id?: string
     title: string
@@ -38,6 +39,9 @@ export interface Job {
     created_at?: Date
     updated_at?: Date
 }
+
+// Add this type for update operations
+export type UpdateJobInput = Partial<Omit<Job, "id" | "handle">>
 
 export interface JobFormProps {
     initialData?: Job

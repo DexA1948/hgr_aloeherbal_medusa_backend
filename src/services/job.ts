@@ -1,8 +1,10 @@
 // src/services/job.ts
+import { Not } from "typeorm"
 import { TransactionBaseService } from "@medusajs/medusa"
 import { Job, JobStatus } from "../models/job"
 import { FindConfig, Selector, buildQuery } from "@medusajs/medusa"
 import { MedusaError } from "@medusajs/utils"
+import { UpdateJobInput } from "src/admin/types/job"
 
 class JobService extends TransactionBaseService {
     constructor(container) {
@@ -55,9 +57,38 @@ class JobService extends TransactionBaseService {
         return job
     }
 
+    async isHandleUnique(handle: string, excludeId?: string): Promise<boolean> {
+        const jobRepo = this.activeManager_.getRepository(Job)
+        const query: any = {
+            where: { handle }
+        }
+
+        if (excludeId) {
+            query.where = {
+                handle,
+                id: Not(excludeId)
+            }
+        }
+
+        const existingJob = await jobRepo.findOne(query)
+        return !existingJob
+    }
+
+    // Also update the create and update methods to handle unique checks
+
     async create(data: Partial<Job>): Promise<Job> {
         return this.atomicPhase_(async (manager) => {
             const jobRepo = manager.getRepository(Job)
+
+            // Check handle uniqueness
+            const isUnique = await this.isHandleUnique(data.handle)
+            if (!isUnique) {
+                throw new MedusaError(
+                    MedusaError.Types.INVALID_DATA,
+                    "A job with this handle already exists"
+                )
+            }
+
             const job = jobRepo.create(data)
             const result = await jobRepo.save(job)
 
@@ -67,12 +98,13 @@ class JobService extends TransactionBaseService {
 
     async update(
         id: string,
-        data: Omit<Partial<Job>, "id">
+        data: UpdateJobInput
     ): Promise<Job> {
         return await this.atomicPhase_(async (manager) => {
             const jobRepo = manager.getRepository(Job)
             const job = await this.retrieve(id)
 
+            // We don't need to destructure handle anymore since it's not in the type
             Object.assign(job, data)
 
             return await jobRepo.save(job)
@@ -93,6 +125,27 @@ class JobService extends TransactionBaseService {
         status: JobStatus
     ): Promise<Job> {
         return await this.update(id, { status })
+    }
+
+    async retrieveByHandle(
+        handle: string,
+        config?: FindConfig<Job>
+    ): Promise<Job> {
+        const jobRepo = this.activeManager_.getRepository(Job)
+        const query = buildQuery({
+            handle,
+        }, config)
+
+        const job = await jobRepo.findOne(query)
+
+        if (!job) {
+            throw new MedusaError(
+                MedusaError.Types.NOT_FOUND,
+                "Job was not found"
+            )
+        }
+
+        return job
     }
 }
 

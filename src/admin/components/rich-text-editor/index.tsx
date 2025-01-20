@@ -28,11 +28,28 @@ const EditorButton = ({ children, ...props }) => (
 )
 
 const editorStyles = `
+  .editor-container {
+    display: flex;
+    flex-direction: column;
+    height: 500px; /* Fixed height for the entire container */
+  }
+
+  .editor-toolbar {
+    flex: 0 0 auto; /* Don't allow toolbar to shrink or grow */
+  }
+
+  .editor-content {
+    flex: 1; /* Allow content to take remaining space */
+    overflow-y: auto; /* Make content scrollable */
+    min-height: 0; /* Required for proper flex behavior */
+  }
+
   .ProseMirror {
-    min-height: 400px;
+    height: 100%;
+    min-height: 100%;
     padding: 1rem;
     outline: none;
-    font-family: ui-sans-serif, system-ui, -apple 
+    font-family: ui-sans-serif, system-ui, -apple-system;
   }
   
   .ProseMirror * + * {
@@ -141,7 +158,7 @@ const RichTextEditor = ({ content, onChange, maxLength = 50000 }: RichTextEditor
         e.preventDefault()
         const previousUrl = editor.getAttributes('link').href
         const url = window.prompt('Enter URL:', previousUrl)
-        
+
         if (url === null) {
             return
         }
@@ -162,10 +179,11 @@ const RichTextEditor = ({ content, onChange, maxLength = 50000 }: RichTextEditor
     const isOverLimit = textContent.length > maxLength
 
     return (
-        <div className="border border-ui-border-base rounded-lg">
+        <div className="border border-ui-border-base rounded-lg editor-container">
             <style>{editorStyles}</style>
-            
-            <div className="border-b border-ui-border-base p-2 flex flex-wrap gap-1 bg-ui-bg-base">
+
+            {/* Fixed Toolbar */}
+            <div className="editor-toolbar border-b border-ui-border-base p-2 flex flex-wrap gap-1 bg-ui-bg-base">
                 <div className="flex items-center gap-1">
                     <EditorButton
                         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -218,7 +236,7 @@ const RichTextEditor = ({ content, onChange, maxLength = 50000 }: RichTextEditor
                 <div className="w-px h-6 mx-2 bg-ui-border-base" />
 
                 <div className="flex items-center gap-1">
-                    <EditorButton 
+                    <EditorButton
                         onClick={() => setShowImageModal(true)}
                         title="Insert image"
                     >
@@ -234,18 +252,22 @@ const RichTextEditor = ({ content, onChange, maxLength = 50000 }: RichTextEditor
                 </div>
             </div>
 
-            <div className={`bg-white transition-colors ${isOverLimit ? 'bg-red-50' : ''}`}>
-                <EditorContent editor={editor} />
+            {/* Scrollable Content Area */}
+            <div className="editor-content">
+                <div className={`bg-white transition-colors ${isOverLimit ? 'bg-red-50' : ''}`}>
+                    <EditorContent editor={editor} />
+                </div>
             </div>
 
-            <div className="p-2 border-t border-ui-border-base">
-                <WordCounter 
-                    content={textContent} 
-                    maxLength={maxLength} 
+            {/* Footer */}
+            <div className="border-t border-ui-border-base p-2 bg-ui-bg-base">
+                <WordCounter
+                    content={textContent}
+                    maxLength={maxLength}
                 />
             </div>
 
-            <ImageUploadModal 
+            <ImageUploadModal
                 open={showImageModal}
                 onClose={() => setShowImageModal(false)}
                 onImageSelect={handleImageSelect}
