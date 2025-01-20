@@ -147,6 +147,20 @@ class JobService extends TransactionBaseService {
 
         return job
     }
+
+    async incrementApplicationCount(
+        id: string
+    ): Promise<Job> {
+        return await this.atomicPhase_(async (manager) => {
+            const jobRepo = manager.getRepository(Job)
+            const job = await this.retrieve(id)
+
+            // Increment the applications_count
+            job.applications_count = (job.applications_count || 0) + 1
+
+            return await jobRepo.save(job)
+        })
+    }
 }
 
 export default JobService
