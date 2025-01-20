@@ -24,9 +24,9 @@ export const config: MiddlewaresConfig = {
           origin: "http://localhost:8000",
           credentials: true,
         }),
-        // Add custom body parser with increased limit
+        // Increase the limit to 10MB to handle file uploads
         json({
-          limit: '10mb'
+          limit: '10mb' // This is more than enough for your current needs
         })
       ],
     },
