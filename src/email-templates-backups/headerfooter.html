@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        /* Reset styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Base styles */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+
+        /* Container wrapper */
+        .wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        /* Header styles */
+        .header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid #22C55E;
+        }
+
+        .logo {
+            width: 180px;
+            max-width: 100%;
+            height: auto;
+            display: inline-block;
+        }
+
+        /* Content area */
+        .content {
+            padding: 25px 20px;
+            background-color: #ffffff;
+        }
+
+        /* Footer styles */
+        .footer {
+            background: linear-gradient(180deg, #2C3E50 0%, #2D5A27 100%);
+            padding: 30px 20px;
+            color: #ffffff;
+        }
+
+        .footer-grid {
+            max-width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            gap: 20px;
+        }
+
+        .footer-section {
+            flex: 1;
+            min-width: 250px;
+            padding: 0 10px;
+        }
+
+        .footer h3 {
+            color: #ffffff;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .footer p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .social-links a {
+            color: #ffffff;
+            text-decoration: none;
+            display: inline-block;
+            margin: 8px 15px 8px 0;
+            font-size: 14px;
+        }
+
+        .contact-info {
+            line-height: 1.8;
+        }
+
+        .disclaimer {
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 20px;
+        }
+
+        .footer a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .social-links a {
+            display: block;
+            margin: 10px 0;
+        }
+
+        /* Mobile optimizations */
+        @media screen and (max-width: 600px) {
+            .wrapper {
+                width: 100% !important;
+            }
+
+            .footer-section {
+                flex: 100%;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+
+
+
+            .content {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+
+    <!-- Hello Claude Put the other sections style separately in style tags -->
+</head>
+
+<body>
+    <div class="wrapper">
+        <!-- Header -->
+        <div class="header">
+            <img src="https://aloeherbals.com/images/aloelogos/aloelogo.png" alt="Aloe Herbals" class="logo">
+        </div>
+
+        <!-- Hello Claude put the content body here -->
+        <div class="content">
+            {{ body }}
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h3>Follow Us</h3>
+                    <div class="social-links">
+                        <a href="https://www.facebook.com/profile.php?id=100064906358321">Facebook</a>
+                        <a href="https://www.instagram.com/aloeherbalofficial/">Instagram</a>
+                        <a href="https://www.tiktok.com/@aloeherbalofficial">TikTok</a>
+                    </div>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Contact Us</h3>
+                    <div class="contact-info">
+                        <p>WhatsApp/Viber:</p>
+                        <p>+977 9820732260</p>
+                        <p><a href="https://aloeherbals.com/np/contactus">Contact Support</a></p>
+                    </div>
+                </div>
+
+                <div class="disclaimer">
+                    <p>This email was sent to {{ email }}</p>
+                    <p>© {{formatDate "YYYY"}} Aloe Herbals. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
